@@ -1,15 +1,17 @@
 import com.github.rinde.rinsim.core.Simulator;
 import com.github.rinde.rinsim.core.model.pdp.DefaultPDPModel;
-import com.github.rinde.rinsim.core.model.time.TimeLapse;
+import com.github.rinde.rinsim.core.model.road.RoadModelBuilders;
+import com.github.rinde.rinsim.core.model.time.TimeModel;
 import com.github.rinde.rinsim.event.Listener;
 import com.github.rinde.rinsim.ui.View;
-import com.github.rinde.rinsim.ui.renderers.GraphRoadModelRenderer;
+import com.github.rinde.rinsim.ui.renderers.PlaneRoadModelRenderer;
 import com.github.rinde.rinsim.ui.renderers.RoadUserRenderer;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Monitor;
 
 import javax.annotation.Nullable;
+import javax.measure.unit.SI;
 
 
 public class DroneExample {
@@ -62,14 +64,23 @@ public class DroneExample {
                                 String graphFile,
                                 @Nullable Display display, @Nullable Monitor m, @Nullable Listener list) {
 
+        System.out.println("Creating the view: INIT\n");
         final View.Builder view = createGui(testing, display, m, list);
+        System.out.println("Creating the view: DONE\n");
+
 
         // use map of leuven
+        System.out.println("Creating the simulator: INIT\n");
         final Simulator simulator = Simulator.builder()
-                .addModel(DefaultPDPModel.builder())
+                .addModel(TimeModel.builder().withTickLength(250))
+                .addModel(RoadModelBuilders.plane())
+//                .addModel(DefaultPDPModel.builder()) // TODO possibly define our own PDP model, extended from the PDP model class, see RinSim/core/src/main/java/com/github/rinde/rinsim/core/model/pdp/PDPModel.java
                 .addModel(view)
                 .build();
+        System.out.println("Creating the simulator: DONE\n");
         final RandomGenerator rng = simulator.getRandomGenerator();
+        System.out.println("Starting simulator ...\n");
+        simulator.start();
         return simulator;
     }
 
@@ -116,7 +127,7 @@ public class DroneExample {
             @Nullable Listener list) {
 
         View.Builder view = View.builder()
-                .with(GraphRoadModelRenderer.builder())
+                .with(PlaneRoadModelRenderer.builder())
                 .with(RoadUserRenderer.builder()
                         .withImageAssociation(
                                 Store.class, "/resources/store.png")
