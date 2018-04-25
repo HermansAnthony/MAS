@@ -17,7 +17,7 @@ import javax.measure.unit.SI;
 public class DroneExample {
     private DroneExample() {}
 
-    private static final String map = "classes/leuven.png";
+    private static final String map = "target/classes/leuven.png";
 
     private static final int endTime = 60000;
 
