@@ -15,10 +15,9 @@ import javax.measure.unit.SI;
 
 
 public class DroneExample {
-    private DroneExample() {
-    }
+    private DroneExample() {}
 
-    private static final String map = "/resources/leuven.png";
+    private static final String map = "classes/leuven.png";
 
     private static final int endTime = 60000;
 
@@ -73,7 +72,7 @@ public class DroneExample {
         System.out.println("Creating the simulator: INIT\n");
         final Simulator simulator = Simulator.builder()
                 .addModel(TimeModel.builder().withTickLength(250))
-                .addModel(RoadModelBuilders.plane())
+                 .addModel(RoadModelBuilders.plane())
 //                .addModel(DefaultPDPModel.builder()) // TODO possibly define our own PDP model, extended from the PDP model class, see RinSim/core/src/main/java/com/github/rinde/rinsim/core/model/pdp/PDPModel.java
                 .addModel(view)
                 .build();
@@ -128,18 +127,7 @@ public class DroneExample {
 
         View.Builder view = View.builder()
                 .with(PlaneRoadModelRenderer.builder())
-                .with(RoadUserRenderer.builder()
-                        .withImageAssociation(
-                                Store.class, "/resources/store.png")
-                        .withImageAssociation(
-                                ChargingPoint.class, "/resources/chargingPoint.png")
-                        .withImageAssociation(
-                                DroneLW.class, "/resources/droneLW.png")
-                        .withImageAssociation(
-                                DroneHW.class, "/resources/droneHW.png")
-                        .withImageAssociation(
-                                Customer.class, "/resources/customer.png"))
-                .with(DroneRenderer.builder())
+                .with(DroneRenderer.builder(map))
                 .withTitleAppendix("Drone Demo");
 
         if (testing) {

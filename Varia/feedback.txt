@@ -1,0 +1,12 @@
+Focus on research objective 1 en 3
+In place of two types of ants:
+    => use exploration ants (parcels -> charging point)
+    => use intention ants to indicate the which path he wants to follow
+
+At the moment we choose to use fixed rate parcel arrivals.
+
+Explain normal circumstances in the questions
+
+Overall situate the specific environment
+    Rate, place of the charging station, number of drones etc
+    Doing a case study of PDP with drones and using delegate mas and BDI.
