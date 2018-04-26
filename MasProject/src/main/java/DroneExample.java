@@ -11,7 +11,11 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Monitor;
 
 import javax.annotation.Nullable;
+import javax.imageio.ImageIO;
 import javax.measure.unit.SI;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 
 
 public class DroneExample {
@@ -125,10 +129,24 @@ public class DroneExample {
             @Nullable Monitor m,
             @Nullable Listener list) {
 
+        int ResX, ResY;
+        // Get the resolution of the map here
+        try {
+            BufferedImage bimg = ImageIO.read(new File(map));
+            ResX = bimg.getWidth();
+            ResY = bimg.getHeight();
+        } catch (IOException e) {
+            System.err.println("Could not find/read the specified map file - using default resolution (800x600).");
+            ResX = 800;
+            ResY = 600;
+        }
+
         View.Builder view = View.builder()
-                .with(PlaneRoadModelRenderer.builder())
-                .with(DroneRenderer.builder(map))
-                .withTitleAppendix("Drone Demo");
+                .withResolution(ResX, ResY)
+                .with(PlaneRoadModelRenderer.builder()) // TODO verify if necessary here
+                .with(DroneRenderer.builder())
+                .with(MapRenderer.builder(map))
+                .withTitleAppendix("Drone Demo - WIP");
 
         if (testing) {
             view = view.withAutoClose()
