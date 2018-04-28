@@ -20,7 +20,7 @@ public class DroneLW  extends Drone {
 
     protected DroneLW() {
         super(VehicleDTO.builder()
-            .capacity(3500)
+            .capacity(10000) // TODO change this capacity back to 3500, just for testing purposes (not keeping in mind the weight)
             .startPosition(new Point(50,50))
             .speed(200) // TODO find a way to scale linearly
             .build());
@@ -54,6 +54,7 @@ public class DroneLW  extends Drone {
             rm.moveTo(this, payload.get().getPickupLocation(), timeLapse);
             if (rm.getPosition(this) == payload.get().getPickupLocation()) {
                 System.out.println("Arrived at store, moving to the customer...");
+                pm.pickup(this, payload.get(), timeLapse);
                 hasOrder = true;
             }
         } else if (hasOrder) {
@@ -65,6 +66,7 @@ public class DroneLW  extends Drone {
 
     @Override
     public void afterTick(TimeLapse timeLapse) {
+        final PDPModel pm = getPDPModel();
         if (!payload.isPresent()) {
             return;
         }
@@ -72,12 +74,14 @@ public class DroneLW  extends Drone {
         RoadModel rm = getRoadModel();
         if (rm.getPosition(this) == payload.get().getDeliveryLocation()) {
             System.out.println("Package delivered.");
+            pm.deliver(this, payload.get(), timeLapse);
             rm.removeObject(findCustomer(rm.getObjects(), payload.get().getDeliveryLocation()));
+//            TODO change findCustomer to lambda @Federico
 //            rm.removeObject(rm.getObjects()
 //                    .stream()
 //                    .filter(obj -> rm.getPosition(obj) == payload.get().getDeliveryLocation())
 //                    .findAny());
-            rm.removeObject(payload.get());
+//            rm.removeObject(payload.get()); // TODO this is done by the pm.deliver call??
 
             payload = Optional.absent();
             hasOrder = false;
