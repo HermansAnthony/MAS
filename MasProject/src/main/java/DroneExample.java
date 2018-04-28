@@ -1,8 +1,11 @@
 import com.github.rinde.rinsim.core.Simulator;
 import com.github.rinde.rinsim.core.model.pdp.DefaultPDPModel;
+import com.github.rinde.rinsim.core.model.pdp.Parcel;
 import com.github.rinde.rinsim.core.model.road.PlaneRoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadModelBuilders;
+import com.github.rinde.rinsim.core.model.time.TickListener;
+import com.github.rinde.rinsim.core.model.time.TimeLapse;
 import com.github.rinde.rinsim.core.model.time.TimeModel;
 import com.github.rinde.rinsim.event.Listener;
 import com.github.rinde.rinsim.examples.taxi.TaxiExample;
@@ -19,7 +22,11 @@ import javax.imageio.ImageIO;
 import javax.measure.unit.SI;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Scanner;
 
 
 public class DroneExample {
@@ -36,6 +43,13 @@ public class DroneExample {
     private static final int amountChargersLW = 5;
     private static final int amountChargersHW = 5;
     private static final int amountRequests = 100;
+    private static final double orderPropability = 0.005;
+    private static final int serviceDuration = 60000;
+    private static final int maxCapacity = 9;
+
+
+
+    private static List<Point> storeLocations;
 
 
     private static Point resolution;
@@ -48,14 +62,28 @@ public class DroneExample {
      *             simulation.
      */
     public static void main(@Nullable String[] args) {
-
-
+        // Get resolution image
         try {
             BufferedImage bimg = ImageIO.read(new File(map));
             resolution = new Point(bimg.getWidth(), bimg.getHeight());
         } catch (IOException e) {
             resolution = new Point(800,600);
         }
+
+        // Read store locations from csv file
+        storeLocations = new ArrayList<>();
+        try {
+            Scanner scanner = new Scanner(new File("target/classes/stores.csv"));
+            scanner.useDelimiter(",|\n");
+            while(scanner.hasNext()){
+                storeLocations.add(new Point(new Double(scanner.next()), new Double(scanner.next())));
+            }
+            scanner.close();
+        } catch (FileNotFoundException e) {
+            System.err.println("Could not read csv file with store locations.");
+        }
+
+        System.out.println(storeLocations);
 
         run(false, endTime, map, null, null, null);
     }
@@ -111,10 +139,35 @@ public class DroneExample {
         final PlaneRoadModel planeRoadModel = simulator.getModelProvider().getModel(
                 PlaneRoadModel.class);
 
-        for (int i = 0; i < amountDroneLW; i++) {
+        for (int i = 0; i < 1; i++) {
             simulator.register(new DroneLW());
         }
+        for (int i = 0; i < 1; i++) {
+            simulator.register(new DroneHW());
+        }
+        for (int i = 0; i < storeLocations.size(); i++) {
+            simulator.register(new Store(storeLocations.get(i)));
+        }
 
+        simulator.register(new ChargingPoint(new Point(560,478)));
+
+
+        simulator.addTickListener(new TickListener() {
+            @Override
+            public void tick(TimeLapse time) {
+                if (rng.nextDouble() < orderPropability) {
+                    simulator.register(new Customer(
+                            Parcel.builder(planeRoadModel.getRandomPosition(rng),
+                                            planeRoadModel.getRandomPosition(rng))
+                                    .serviceDuration(serviceDuration)
+                                    .neededCapacity(1 + rng.nextInt(maxCapacity - 1))
+                                    .buildDTO()));
+                }
+            }
+
+            @Override
+            public void afterTick(TimeLapse timeLapse) {}
+        });
 
         simulator.start();
 
@@ -142,20 +195,6 @@ public class DroneExample {
 //                            .buildDTO()));
 //        }
 //
-//        simulator.addTickListener(new TickListener() {
-//            @Override
-//            public void tick(TimeLapse time) {
-//                if (time.getStartTime() > endTime) {
-//                    simulator.stop();
-//                } else if (rng.nextDouble() < NEW_CUSTOMER_PROB) {
-//                    simulator.register(new TaxiExample.Customer(
-//                            Parcel
-//                                    .builder(roadModel.getRandomPosition(rng),
-//                                            roadModel.getRandomPosition(rng))
-//                                    .serviceDuration(SERVICE_DURATION)
-//                                    .neededCapacity(1 + rng.nextInt(MAX_CAPACITY))
-//                                    .buildDTO()));
-//                }
 //            }
 
     static View.Builder createGui(
@@ -169,15 +208,15 @@ public class DroneExample {
                 .with(PlaneRoadModelRenderer.builder()) // TODO verify if necessary here
                 .with(RoadUserRenderer.builder()
                     .withImageAssociation(
-                        DroneLW.class, "/droneLW.png")
+                        DroneLW.class, "/droneLW-32.png")
                     .withImageAssociation(
-                        DroneHW.class, "/droneHW.png")
+                        DroneHW.class, "/droneHW-32.png")
                     .withImageAssociation(
-                        Customer.class, "/customer.png")
+                        Customer.class, "/customer-32.png")
                     .withImageAssociation(
-                        Store.class, "/store.png")
+                        Store.class, "/store-40.png")
                     .withImageAssociation(
-                        ChargingPoint.class, "/chargingPoint.png"))
+                        ChargingPoint.class, "/chargingPoint-40.png"))
                 .with(DroneRenderer.builder())
                 .with(MapRenderer.builder(map))
                 .withResolution(new Double(resolution.x).intValue(), new Double(resolution.y).intValue())

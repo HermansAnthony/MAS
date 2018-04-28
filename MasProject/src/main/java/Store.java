@@ -5,5 +5,4 @@ public class Store extends Depot {
     public Store(Point position) {
         super(position);
     }
-//    public Store() {}
 }

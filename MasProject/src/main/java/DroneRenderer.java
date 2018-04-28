@@ -35,22 +35,25 @@ public class DroneRenderer extends CanvasRenderer.AbstractCanvasRenderer {
                 final int xpx = vp.toCoordX(p.x);
                 final int ypx = vp.toCoordY(p.y);
 
-                final Drone drone = (Drone) entry.getKey();
+                if (entry.getKey() instanceof DroneLW) {
+                    gc.fillOval(
+                            xpx - vp.scale(r), ypx - vp.scale(r),
+                            2 * vp.scale(r), 2 * vp.scale(r));
 
-                if (drone != null) {
-                    if (drone instanceof DroneLW) {
-                        gc.fillOval(
-                                xpx - vp.scale(r), ypx - vp.scale(r),
-                                2 * vp.scale(r), 2 * vp.scale(r));
+                    gc.drawOval(
+                            xpx - vp.scale(r), ypx - vp.scale(r),
+                            2 * vp.scale(r), 2 * vp.scale(r));
+                } else if (entry.getKey() instanceof DroneHW) {
+                    gc.fillOval(
+                            xpx - vp.scale(r), ypx - vp.scale(r),
+                            2 * vp.scale(r), 2 * vp.scale(r));
 
-                        gc.drawOval(
-                                xpx - vp.scale(r), ypx - vp.scale(r),
-                                2 * vp.scale(r), 2 * vp.scale(r));
-                    } else if (drone instanceof DroneHW) {
-                    }
-
-
+                    gc.drawOval(
+                            xpx - vp.scale(r), ypx - vp.scale(r),
+                            2 * vp.scale(r), 2 * vp.scale(r));
                 }
+
+
             }
         }
     }

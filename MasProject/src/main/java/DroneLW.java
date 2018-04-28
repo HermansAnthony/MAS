@@ -7,10 +7,6 @@ import com.google.common.base.Optional;
 
 
 public class DroneLW  extends Drone {
-    private Point location;
-    private Optional<PlaneRoadModel> rm;
-    private Point destination;
-
 
     public DroneLW() {
         location = new Point(50,50);
@@ -26,7 +22,7 @@ public class DroneLW  extends Drone {
 
     @Override
     public double getSpeed() {
-        return 100;
+        return 200;
     }
 
     @Override
