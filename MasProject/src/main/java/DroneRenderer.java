@@ -40,42 +40,49 @@ public class DroneRenderer extends CanvasRenderer.AbstractCanvasRenderer {
                 final int xpx = vp.toCoordX(p.x);
                 final int ypx = vp.toCoordY(p.y);
 
-
-                if (entry.getKey() instanceof DroneLW) {
-                    // TODO put this code in a separate function to avoid code duplication
-                    Drone d = (Drone) entry.getKey();
-                    final PDPModel.VehicleState vs = pdpModel.getVehicleState(d);
-                    String text = determineStatus(d, vs);
-                    gc.fillOval(
-                            xpx - vp.scale(r), ypx - vp.scale(r),
-                            2 * vp.scale(r), 2 * vp.scale(r));
-
-                    gc.drawOval(
-                            xpx - vp.scale(r), ypx - vp.scale(r),
-                            2 * vp.scale(r), 2 * vp.scale(r));
-                    if (text != null) {
-                        final org.eclipse.swt.graphics.Point extent = gc.textExtent(text);
-                        gc.setBackground(gc.getDevice().getSystemColor(SWT.COLOR_BLACK));
-                        gc.fillRoundRectangle(xpx - extent.x / 2, ypx + offsetY - extent.y / 2,
-                                extent.x + 2, extent.y + 2, 5,
-                                5);
-                        gc.setForeground(gc.getDevice().getSystemColor(SWT.COLOR_WHITE));
-
-                        gc.drawText(text, xpx - extent.x / 2 + 1, ypx + offsetY - extent.y / 2 + 1,
-                                true);
-                    }
-                } else if (entry.getKey() instanceof DroneHW) {
-                    gc.fillOval(
-                            xpx - vp.scale(r), ypx - vp.scale(r),
-                            2 * vp.scale(r), 2 * vp.scale(r));
-
-                    gc.drawOval(
-                            xpx - vp.scale(r), ypx - vp.scale(r),
-                            2 * vp.scale(r), 2 * vp.scale(r));
+                if (entry.getKey() instanceof DroneLW || entry.getKey() instanceof DroneHW) {
+                    renderDrone(entry.getKey(), gc, vp, xpx, ypx, r);
                 }
-
-
             }
+        }
+    }
+
+    // Determine the status of the drone (pickup, delivering and carrying a load)
+    private String determineStatus(Drone d, PDPModel.VehicleState vs){
+        String text = null;
+        final int size = (int) pdpModel.getContentsSize(d);
+        if (vs == PDPModel.VehicleState.DELIVERING) {
+            text = "Delivering order";
+        } else if (vs == PDPModel.VehicleState.PICKING_UP) {
+            text = "Pickup order";
+        } else if (size > 0) {
+            text = "Load: " + Integer.toString(size) + " grams";
+        }
+        return text;
+    }
+
+    private void renderDrone(RoadUser user, GC gc, ViewPort vp, int xpx, int ypx, int r){
+        // TODO put this code in a separate function to avoid code duplication
+        Drone d = (Drone) user;
+        final PDPModel.VehicleState vs = pdpModel.getVehicleState(d);
+        String text = determineStatus(d, vs);
+        gc.fillOval(
+                xpx - vp.scale(r), ypx - vp.scale(r),
+                2 * vp.scale(r), 2 * vp.scale(r));
+
+        gc.drawOval(
+                xpx - vp.scale(r), ypx - vp.scale(r),
+                2 * vp.scale(r), 2 * vp.scale(r));
+        if (text != null) {
+            final org.eclipse.swt.graphics.Point extent = gc.textExtent(text);
+            gc.setBackground(gc.getDevice().getSystemColor(SWT.COLOR_BLACK));
+            gc.fillRoundRectangle(xpx - extent.x / 2, ypx + offsetY - extent.y / 2,
+                    extent.x + 2, extent.y + 2, 5,
+                    5);
+            gc.setForeground(gc.getDevice().getSystemColor(SWT.COLOR_WHITE));
+
+            gc.drawText(text, xpx - extent.x / 2 + 1, ypx + offsetY - extent.y / 2 + 1,
+                    true);
         }
     }
 
@@ -95,19 +102,5 @@ public class DroneRenderer extends CanvasRenderer.AbstractCanvasRenderer {
             final PDPModel pdpModel = dependencyProvider.get(PDPModel.class);
             return new DroneRenderer(rm, pdpModel);
         }
-    }
-
-    // Determine the status of the drone (pickup, delivering and carrying a load)
-    private String determineStatus(Drone d, PDPModel.VehicleState vs){
-        String text = null;
-        final int size = (int) pdpModel.getContentsSize(d);
-        if (vs == PDPModel.VehicleState.DELIVERING) {
-            text = "Delivering order";
-        } else if (vs == PDPModel.VehicleState.PICKING_UP) {
-            text = "Pickup order";
-        } else if (size > 0) {
-            text = "Load: " + Integer.toString(size) + " grams";
-        }
-        return text;
     }
 }

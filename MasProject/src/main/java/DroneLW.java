@@ -15,16 +15,12 @@ import java.util.List;
 
 
 public class DroneLW  extends Drone {
-
-    private Optional<Parcel> payload;
-
     protected DroneLW() {
         super(VehicleDTO.builder()
-            .capacity(10000) // TODO change this capacity back to 3500, just for testing purposes (not keeping in mind the weight)
+            .capacity(3500)
             .startPosition(new Point(50,50))
-            .speed(200) // TODO find a way to scale linearly
+            .speed(1000) // TODO find a way to scale linearly
             .build());
-//        destination = new Point(500,500);
         payload = Optional.absent();
     }
 
@@ -44,8 +40,11 @@ public class DroneLW  extends Drone {
             for (RoadUser user : roadUsers) {
                 if (user instanceof Order) {
                     Order order = (Order) user;
-                    payload = Optional.of((Parcel) order);
-                    System.out.println("Moving to store...");
+                    // HW drone can only take a payload of 3500 grams or less
+                    if (order.getNeededCapacity() <= this.getCapacity()) {
+                        payload = Optional.of((Parcel) order);
+                        System.out.println("Moving to store...");
+                    }
                 }
             }
 
@@ -54,7 +53,14 @@ public class DroneLW  extends Drone {
             rm.moveTo(this, payload.get().getPickupLocation(), timeLapse);
             if (rm.getPosition(this) == payload.get().getPickupLocation()) {
                 System.out.println("Arrived at store, moving to the customer...");
-                pm.pickup(this, payload.get(), timeLapse);
+                try {
+                    pm.pickup(this, payload.get(), timeLapse);
+                } catch(IllegalArgumentException e){
+                    System.out.println("Parcel is already in transport with another drone");
+                    payload = Optional.absent();
+                    return;
+                }
+//                pm.pickup(this, payload.get(), timeLapse);
                 hasOrder = true;
             }
         } else if (hasOrder) {

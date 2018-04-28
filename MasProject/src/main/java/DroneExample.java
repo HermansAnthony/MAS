@@ -153,8 +153,8 @@ public class DroneExample {
                     Point location = planeRoadModel.getRandomPosition(rng);
                     Customer customer = new Customer(location);
                     simulator.register(customer);
-
-                    ParcelDTO orderData = Parcel.builder(storeLocations.get(1),location)
+                    int randomStore = rng.nextInt(storeLocations.size());
+                    ParcelDTO orderData = Parcel.builder(storeLocations.get(randomStore),location)
                             .serviceDuration(serviceDuration)
                             .neededCapacity(1000 + rng.nextInt(maxCapacity - 1000)) // Capacity is measured in grams
                             .buildDTO();
