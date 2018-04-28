@@ -1,6 +1,7 @@
 import com.github.rinde.rinsim.core.Simulator;
 import com.github.rinde.rinsim.core.model.pdp.DefaultPDPModel;
 import com.github.rinde.rinsim.core.model.pdp.Parcel;
+import com.github.rinde.rinsim.core.model.pdp.ParcelDTO;
 import com.github.rinde.rinsim.core.model.road.PlaneRoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadModelBuilders;
@@ -43,9 +44,9 @@ public class DroneExample {
     private static final int amountChargersLW = 5;
     private static final int amountChargersHW = 5;
     private static final int amountRequests = 100;
-    private static final double orderPropability = 0.005;
+    private static final double orderProbability = 0.00005;
     private static final int serviceDuration = 60000;
-    private static final int maxCapacity = 9;
+    private static final int maxCapacity = 9000;
 
 
 
@@ -85,7 +86,7 @@ public class DroneExample {
 
         System.out.println(storeLocations);
 
-        run(false, endTime, map, null, null, null);
+        run(false, endTime);
     }
 
     /**
@@ -94,7 +95,7 @@ public class DroneExample {
      * @param testing If <code>true</code> enables the test mode.
      */
     public static void run(boolean testing) {
-        run(testing, Long.MAX_VALUE, map, null, null, null);
+        run(testing, Long.MAX_VALUE);
     }
 
     /**
@@ -102,18 +103,12 @@ public class DroneExample {
      *
      * @param testing   Indicates whether the method should run in testing mode.
      * @param endTime   The time at which simulation should stop.
-     * @param graphFile The graph that should be loaded.
-     * @param display   The display that should be used to show the ui on.
-     * @param m         The monitor that should be used to show the ui on.
-     * @param list      A listener that will receive callbacks from the ui.
      * @return The simulator instance.
      */
-    public static Simulator run(boolean testing, final long endTime,
-                                String graphFile,
-                                @Nullable Display display, @Nullable Monitor m, @Nullable Listener list) {
+    public static Simulator run(boolean testing, final long endTime) {
 
         System.out.println("Creating the view: INIT\n");
-        final View.Builder view = createGui(testing, display, m, list);
+        final View.Builder view = createGui(testing);
         System.out.println("Creating the view: DONE\n");
 
 
@@ -122,14 +117,13 @@ public class DroneExample {
         final Simulator simulator = Simulator.builder()
                 .addModel(TimeModel.builder().withTickLength(250))
                 .addModel(RoadModelBuilders.plane()
-//                    .withCollisionAvoidance()
 //                    .withObjectRadius(droneRadius)
                     .withMinPoint(new Point(0,0))
                     .withMaxPoint(resolution))
 //                    .withDistanceUnit(SI.METER)
 //                    .withSpeedUnit(SI.METERS_PER_SECOND)
 //                    .withMaxSpeed(1))
-//                .addModel(DefaultPDPModel.builder()) // TODO possibly define our own PDP model, extended from the PDP model class, see RinSim/core/src/main/java/com/github/rinde/rinsim/core/model/pdp/PDPModel.java
+                .addModel(DefaultPDPModel.builder()) // TODO possibly define our own PDP model, extended from the PDP model class, see RinSim/core/src/main/java/com/github/rinde/rinsim/core/model/pdp/PDPModel.java
                 .addModel(view)
                 .build();
         System.out.println("Creating the simulator: DONE\n");
@@ -139,14 +133,14 @@ public class DroneExample {
         final PlaneRoadModel planeRoadModel = simulator.getModelProvider().getModel(
                 PlaneRoadModel.class);
 
+        for (int i = 0; i < storeLocations.size(); i++) {
+            simulator.register(new Store(storeLocations.get(i)));
+        }
         for (int i = 0; i < 1; i++) {
             simulator.register(new DroneLW());
         }
         for (int i = 0; i < 1; i++) {
             simulator.register(new DroneHW());
-        }
-        for (int i = 0; i < storeLocations.size(); i++) {
-            simulator.register(new Store(storeLocations.get(i)));
         }
 
         simulator.register(new ChargingPoint(new Point(560,478)));
@@ -155,13 +149,16 @@ public class DroneExample {
         simulator.addTickListener(new TickListener() {
             @Override
             public void tick(TimeLapse time) {
-                if (rng.nextDouble() < orderPropability) {
-                    simulator.register(new Customer(
-                            Parcel.builder(planeRoadModel.getRandomPosition(rng),
-                                            planeRoadModel.getRandomPosition(rng))
-                                    .serviceDuration(serviceDuration)
-                                    .neededCapacity(1 + rng.nextInt(maxCapacity - 1))
-                                    .buildDTO()));
+                if (rng.nextDouble() < orderProbability) {
+                    Point location = planeRoadModel.getRandomPosition(rng);
+                    Customer customer = new Customer(location);
+                    simulator.register(customer);
+
+                    ParcelDTO orderData = Parcel.builder(storeLocations.get(0),location)
+                            .serviceDuration(serviceDuration)
+                            .neededCapacity(1000 + rng.nextInt(maxCapacity - 1000)) // Capacity is measured in grams
+                            .buildDTO();
+                    simulator.register(new Order(orderData, customer));
                 }
             }
 
@@ -175,48 +172,22 @@ public class DroneExample {
         return simulator;
     }
 
-//        final RoadModel roadModel = simulator.getModelProvider().getModel(
-//                RoadModel.class);
-//        // add depots, taxis and parcels to simulator
-//        for (int i = 0; i < NUM_DEPOTS; i++) {
-//            simulator.register(new TaxiExample.TaxiBase(roadModel.getRandomPosition(rng),
-//                    DEPOT_CAPACITY));
-//        }
-//        for (int i = 0; i < NUM_TAXIS; i++) {
-//            simulator.register(new Taxi(roadModel.getRandomPosition(rng),
-//                    TAXI_CAPACITY));
-//        }
-//        for (int i = 0; i < NUM_CUSTOMERS; i++) {
-//            simulator.register(new TaxiExample.Customer(
-//                    Parcel.builder(roadModel.getRandomPosition(rng),
-//                            roadModel.getRandomPosition(rng))
-//                            .serviceDuration(SERVICE_DURATION)
-//                            .neededCapacity(1 + rng.nextInt(MAX_CAPACITY))
-//                            .buildDTO()));
-//        }
-//
-//            }
-
-    static View.Builder createGui(
-            boolean testing,
-            @Nullable Display display,
-            @Nullable Monitor m,
-            @Nullable Listener list) {
+    static View.Builder createGui(boolean testing) {
 
 
         View.Builder view = View.builder()
                 .with(PlaneRoadModelRenderer.builder()) // TODO verify if necessary here
                 .with(RoadUserRenderer.builder()
                     .withImageAssociation(
-                        DroneLW.class, "/droneLW-32.png")
-                    .withImageAssociation(
-                        DroneHW.class, "/droneHW-32.png")
-                    .withImageAssociation(
                         Customer.class, "/customer-32.png")
                     .withImageAssociation(
                         Store.class, "/store-40.png")
                     .withImageAssociation(
-                        ChargingPoint.class, "/chargingPoint-40.png"))
+                        ChargingPoint.class, "/chargingPoint-40.png")
+                    .withImageAssociation(
+                        DroneLW.class, "/droneLW-32.png")
+                    .withImageAssociation(
+                        DroneHW.class, "/droneHW-32.png"))
                 .with(DroneRenderer.builder())
                 .with(MapRenderer.builder(map))
                 .withResolution(new Double(resolution.x).intValue(), new Double(resolution.y).intValue())
@@ -227,15 +198,6 @@ public class DroneExample {
                     .withAutoPlay()
                     .withSimulatorEndTime(10000)
                     .withSpeedUp(64);
-        } else if (m != null && list != null && display != null) {
-            view = view.withMonitor(m)
-                    .withSpeedUp(64)
-                    .withResolution(m.getClientArea().width, m.getClientArea().height)
-                    .withDisplay(display)
-                    .withCallback(list)
-                    .withAsync()
-                    .withAutoPlay()
-                    .withAutoClose();
         }
         return view;
     }
