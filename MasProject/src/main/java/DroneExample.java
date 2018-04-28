@@ -1,8 +1,12 @@
 import com.github.rinde.rinsim.core.Simulator;
 import com.github.rinde.rinsim.core.model.pdp.DefaultPDPModel;
+import com.github.rinde.rinsim.core.model.road.PlaneRoadModel;
+import com.github.rinde.rinsim.core.model.road.RoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadModelBuilders;
 import com.github.rinde.rinsim.core.model.time.TimeModel;
 import com.github.rinde.rinsim.event.Listener;
+import com.github.rinde.rinsim.examples.taxi.TaxiExample;
+import com.github.rinde.rinsim.geom.Point;
 import com.github.rinde.rinsim.ui.View;
 import com.github.rinde.rinsim.ui.renderers.PlaneRoadModelRenderer;
 import com.github.rinde.rinsim.ui.renderers.RoadUserRenderer;
@@ -28,9 +32,13 @@ public class DroneExample {
     // LW = light weight, HW = heavy weight
     private static final int amountDroneLW = 15;
     private static final int amountDroneHW = 15;
+    private static final int droneRadius = 1;
     private static final int amountChargersLW = 5;
     private static final int amountChargersHW = 5;
     private static final int amountRequests = 100;
+
+
+    private static Point resolution;
 
 
     /**
@@ -40,6 +48,15 @@ public class DroneExample {
      *             simulation.
      */
     public static void main(@Nullable String[] args) {
+
+
+        try {
+            BufferedImage bimg = ImageIO.read(new File(map));
+            resolution = new Point(bimg.getWidth(), bimg.getHeight());
+        } catch (IOException e) {
+            resolution = new Point(800,600);
+        }
+
         run(false, endTime, map, null, null, null);
     }
 
@@ -76,14 +93,32 @@ public class DroneExample {
         System.out.println("Creating the simulator: INIT\n");
         final Simulator simulator = Simulator.builder()
                 .addModel(TimeModel.builder().withTickLength(250))
-                 .addModel(RoadModelBuilders.plane())
+                .addModel(RoadModelBuilders.plane()
+//                    .withCollisionAvoidance()
+//                    .withObjectRadius(droneRadius)
+                    .withMinPoint(new Point(0,0))
+                    .withMaxPoint(resolution))
+//                    .withDistanceUnit(SI.METER)
+//                    .withSpeedUnit(SI.METERS_PER_SECOND)
+//                    .withMaxSpeed(1))
 //                .addModel(DefaultPDPModel.builder()) // TODO possibly define our own PDP model, extended from the PDP model class, see RinSim/core/src/main/java/com/github/rinde/rinsim/core/model/pdp/PDPModel.java
                 .addModel(view)
                 .build();
         System.out.println("Creating the simulator: DONE\n");
         final RandomGenerator rng = simulator.getRandomGenerator();
         System.out.println("Starting simulator ...\n");
+
+        final PlaneRoadModel planeRoadModel = simulator.getModelProvider().getModel(
+                PlaneRoadModel.class);
+
+        for (int i = 0; i < amountDroneLW; i++) {
+            simulator.register(new DroneLW());
+        }
+
+
         simulator.start();
+
+
         return simulator;
     }
 
@@ -129,23 +164,23 @@ public class DroneExample {
             @Nullable Monitor m,
             @Nullable Listener list) {
 
-        int ResX, ResY;
-        // Get the resolution of the map here
-        try {
-            BufferedImage bimg = ImageIO.read(new File(map));
-            ResX = bimg.getWidth();
-            ResY = bimg.getHeight();
-        } catch (IOException e) {
-            System.err.println("Could not find/read the specified map file - using default resolution (800x600).");
-            ResX = 800;
-            ResY = 600;
-        }
 
         View.Builder view = View.builder()
-                .withResolution(ResX, ResY)
                 .with(PlaneRoadModelRenderer.builder()) // TODO verify if necessary here
+                .with(RoadUserRenderer.builder()
+                    .withImageAssociation(
+                        DroneLW.class, "/droneLW.png")
+                    .withImageAssociation(
+                        DroneHW.class, "/droneHW.png")
+                    .withImageAssociation(
+                        Customer.class, "/customer.png")
+                    .withImageAssociation(
+                        Store.class, "/store.png")
+                    .withImageAssociation(
+                        ChargingPoint.class, "/chargingPoint.png"))
                 .with(DroneRenderer.builder())
                 .with(MapRenderer.builder(map))
+                .withResolution(new Double(resolution.x).intValue(), new Double(resolution.y).intValue())
                 .withTitleAppendix("Drone Demo - WIP");
 
         if (testing) {

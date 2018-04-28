@@ -1,25 +1,22 @@
 import com.github.rinde.rinsim.core.model.DependencyProvider;
 import com.github.rinde.rinsim.core.model.ModelBuilder;
-import com.github.rinde.rinsim.core.model.pdp.PDPModel;
 import com.github.rinde.rinsim.core.model.road.PlaneRoadModel;
-import com.github.rinde.rinsim.core.model.road.RoadModel;
-import com.github.rinde.rinsim.examples.core.taxi.TaxiRenderer;
+import com.github.rinde.rinsim.core.model.road.RoadUser;
 import com.github.rinde.rinsim.geom.Point;
 import com.github.rinde.rinsim.ui.renderers.CanvasRenderer;
 import com.github.rinde.rinsim.ui.renderers.ViewPort;
-import com.github.rinde.rinsim.ui.renderers.ViewRect;
-import com.google.common.base.Optional;
-import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.GC;
-import org.eclipse.swt.graphics.Image;
+
+import java.util.Map;
 
 
 public class DroneRenderer extends CanvasRenderer.AbstractCanvasRenderer {
-//    final PDPModel pdpModel; TODO change this model later on
-    final PlaneRoadModel pdpModel;
+    private final PlaneRoadModel rm;
 
-    public DroneRenderer(PlaneRoadModel p) {
-        pdpModel = p;
+
+
+    public DroneRenderer(PlaneRoadModel r) {
+        rm = r;
     }
 
     static DroneRenderer.Builder builder() { return new Builder(); }
@@ -30,12 +27,32 @@ public class DroneRenderer extends CanvasRenderer.AbstractCanvasRenderer {
 
     @Override
     public void renderDynamic(GC gc, ViewPort vp, long time) {
-        // TODO render drones here
-    }
+        final int r = 1;
+        final Map<RoadUser, Point> objects = rm.getObjectsAndPositions();
+        synchronized (objects) {
+            for (final Map.Entry<RoadUser, Point> entry : objects.entrySet()) {
+                final Point p = entry.getValue();
+                final int xpx = vp.toCoordX(p.x);
+                final int ypx = vp.toCoordY(p.y);
 
-    @Override
-    public Optional<ViewRect> getViewRect() {
-        return Optional.of(new ViewRect(new Point(0, 0), new Point(1120, 956)));
+                final Drone drone = (Drone) entry.getKey();
+
+                if (drone != null) {
+                    if (drone instanceof DroneLW) {
+                        gc.fillOval(
+                                xpx - vp.scale(r), ypx - vp.scale(r),
+                                2 * vp.scale(r), 2 * vp.scale(r));
+
+                        gc.drawOval(
+                                xpx - vp.scale(r), ypx - vp.scale(r),
+                                2 * vp.scale(r), 2 * vp.scale(r));
+                    } else if (drone instanceof DroneHW) {
+                    }
+
+
+                }
+            }
+        }
     }
 
     final static class Builder extends
@@ -50,8 +67,8 @@ public class DroneRenderer extends CanvasRenderer.AbstractCanvasRenderer {
         @Override
         public DroneRenderer build(DependencyProvider dependencyProvider) {
             System.out.println("Drone renderer build");
-            final PlaneRoadModel pm = dependencyProvider.get(PlaneRoadModel.class);
-            return new DroneRenderer(null);
+            final PlaneRoadModel rm = dependencyProvider.get(PlaneRoadModel.class);
+            return new DroneRenderer(rm);
         }
     }
 }

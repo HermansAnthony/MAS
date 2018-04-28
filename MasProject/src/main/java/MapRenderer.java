@@ -31,6 +31,10 @@ public class MapRenderer extends CanvasRenderer.AbstractCanvasRenderer {
     public void renderDynamic(GC gc, ViewPort vp, long time) {
     }
 
+    @Override
+    public Optional<ViewRect> getViewRect() {
+        return Optional.of(new ViewRect(new Point(0, 0), new Point(1120, 956)));
+    }
 
     final static class Builder extends
             ModelBuilder.AbstractModelBuilder<MapRenderer, Void> {
@@ -45,7 +49,6 @@ public class MapRenderer extends CanvasRenderer.AbstractCanvasRenderer {
 
         @Override
         public MapRenderer build(DependencyProvider dependencyProvider) {
-            System.out.println("Drone renderer build");
             final PlaneRoadModel pm = dependencyProvider.get(PlaneRoadModel.class);
             return new MapRenderer(null, map);
         }
