@@ -79,25 +79,13 @@ public class DroneHW extends Drone {
         if (rm.getPosition(this) == payload.get().getDeliveryLocation()) {
             System.out.println("Package delivered.");
             pm.deliver(this, payload.get(), timeLapse);
-            rm.removeObject(findCustomer(rm.getObjects(), payload.get().getDeliveryLocation()));
-//            TODO change findCustomer to lambda @Federico
-//            rm.removeObject(rm.getObjects()
-//                    .stream()
-//                    .filter(obj -> rm.getPosition(obj) == payload.get().getDeliveryLocation())
-//                    .findAny());
-//            rm.removeObject(payload.get()); // TODO this is done by the pm.deliver call??
-
+            rm.removeObject(rm.getObjects()
+                    .stream()
+                    .filter(obj -> rm.getPosition(obj) == payload.get().getDeliveryLocation() && obj instanceof Customer)
+                    .findFirst().get());
             payload = Optional.absent();
             hasOrder = false;
         }
     }
 
-    private RoadUser findCustomer(Collection<RoadUser> users, Point location) {
-        for (RoadUser user : users) {
-            if (user instanceof Customer && getRoadModel().getPosition(user) == location) {
-                return user;
-            }
-        }
-        return null;
-    }
 }

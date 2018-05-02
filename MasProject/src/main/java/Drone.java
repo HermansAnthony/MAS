@@ -6,11 +6,13 @@ import com.google.common.base.Optional;
 public abstract class Drone extends Vehicle {
     protected boolean hasOrder;
     protected Optional<Parcel> payload;
+    protected int batteryLife;
 
 
     protected Drone(VehicleDTO vehicleDto) {
         super(vehicleDto);
         hasOrder = false;
         payload = Optional.absent();
+        batteryLife = 1000;
     }
 }
