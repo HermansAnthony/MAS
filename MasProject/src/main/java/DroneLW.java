@@ -1,19 +1,19 @@
 import com.github.rinde.rinsim.core.model.pdp.PDPModel;
 import com.github.rinde.rinsim.core.model.pdp.Parcel;
-import com.github.rinde.rinsim.core.model.pdp.VehicleDTO;
 import com.github.rinde.rinsim.core.model.road.RoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadModels;
 import com.github.rinde.rinsim.core.model.road.RoadUser;
 import com.github.rinde.rinsim.core.model.time.TimeLapse;
 import com.github.rinde.rinsim.geom.Point;
 import com.google.common.base.Optional;
+import pdp.DroneDTO;
 
 import java.util.Collection;
 
 
 public class DroneLW  extends Drone {
     protected DroneLW() {
-        super(VehicleDTO.builder()
+        super(DroneDTO.builder()
             .capacity(3500)
             .startPosition(new Point(50,50))
             .speed(1000) // TODO find a way to scale linearly
