@@ -1,31 +1,57 @@
+package pdp;
+
 import com.github.rinde.rinsim.core.model.pdp.VehicleDTO;
 import com.github.rinde.rinsim.geom.Point;
 import com.github.rinde.rinsim.util.TimeWindow;
-import com.google.auto.value.AutoValue;
 
-@AutoValue
-public abstract class DroneDTO extends VehicleDTO {
-    DroneDTO() {
+import static com.google.common.base.Preconditions.checkArgument;
+
+public class DroneDTO {
+    private static final double DEFAULT_SPEED = 50d;
+    private static final Point DEFAULT_START_POSITION = new Point(0, 0);
+    private static final int DEFAULT_BATTERY_LIFE = 1000;
+
+    Point startPosition;
+    double speed;
+    int capacity;
+    TimeWindow availabilityTimeWindow;
+    int batteryLife;
+
+    DroneDTO(Point _start, double _speed, int _capacity, TimeWindow _window, int _batteryLife) {
+        startPosition = _start;
+        speed = _speed;
+        capacity = _capacity;
+        availabilityTimeWindow = _window;
+        batteryLife = _batteryLife;
     }
 
-    @Override
+
+    public void setSpeed(double _speed) {
+        speed = _speed;
+    }
+
+    public void decreaseBatteryLife(int amt) {
+        batteryLife -= amt;
+    }
+
+    public int getBatteryLife() {
+        return batteryLife;
+    }
+
     public Point getStartPosition() {
-        return null;
+        return startPosition;
     }
 
-    @Override
     public double getSpeed() {
-        return 0;
+        return speed;
     }
 
-    @Override
     public int getCapacity() {
-        return 0;
+        return capacity;
     }
 
-    @Override
     public TimeWindow getAvailabilityTimeWindow() {
-        return null;
+        return availabilityTimeWindow;
     }
 
     /**
@@ -40,19 +66,18 @@ public abstract class DroneDTO extends VehicleDTO {
      * @author Rinde van Lon
      */
     public static class Builder {
-        private static final double DEFAULT_SPEED = 50d;
-        private static final Point DEFAULT_START_POSITION = new Point(0, 0);
-
         Point startPosition;
         double speed;
         int capacity;
         TimeWindow availabilityTimeWindow;
+        int batteryLife;
 
         Builder() {
             startPosition = DEFAULT_START_POSITION;
             speed = DEFAULT_SPEED;
             capacity = 1;
             availabilityTimeWindow = TimeWindow.always();
+            batteryLife = DEFAULT_BATTERY_LIFE;
         }
 
         /**
@@ -60,7 +85,7 @@ public abstract class DroneDTO extends VehicleDTO {
          * @param dto The dto to copy values from.
          * @return This, as per the builder pattern.
          */
-        public Builder use(VehicleDTO dto) {
+        public Builder use(DroneDTO dto) {
             return startPosition(dto.getStartPosition())
                     .availabilityTimeWindow(dto.getAvailabilityTimeWindow())
                     .speed(dto.getSpeed())
@@ -111,12 +136,16 @@ public abstract class DroneDTO extends VehicleDTO {
             return this;
         }
 
+        public Builder batteryLife(int _batteryLife) {
+            batteryLife = _batteryLife;
+            return this;
+        }
         /**
-         * @return A new {@link VehicleDTO} instance.
+         * @return A new {@link DroneDTO} instance.
          */
-        public VehicleDTO build() {
-            return new AutoValue_VehicleDTO(startPosition, speed, capacity,
-                    availabilityTimeWindow);
+        public DroneDTO build() {
+            return new DroneDTO(startPosition, speed, capacity,
+                    availabilityTimeWindow, batteryLife);
         }
     }
 }

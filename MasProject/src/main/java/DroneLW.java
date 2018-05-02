@@ -1,8 +1,6 @@
 import com.github.rinde.rinsim.core.model.pdp.PDPModel;
 import com.github.rinde.rinsim.core.model.pdp.Parcel;
 import com.github.rinde.rinsim.core.model.pdp.VehicleDTO;
-import com.github.rinde.rinsim.core.model.rand.RandomProvider;
-import com.github.rinde.rinsim.core.model.road.PlaneRoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadModels;
 import com.github.rinde.rinsim.core.model.road.RoadUser;
@@ -11,7 +9,6 @@ import com.github.rinde.rinsim.geom.Point;
 import com.google.common.base.Optional;
 
 import java.util.Collection;
-import java.util.List;
 
 
 public class DroneLW  extends Drone {
