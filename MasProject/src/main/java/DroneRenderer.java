@@ -1,5 +1,8 @@
 import com.github.rinde.rinsim.core.model.DependencyProvider;
 import com.github.rinde.rinsim.core.model.ModelBuilder;
+import com.github.rinde.rinsim.core.model.pdp.Drone;
+import com.github.rinde.rinsim.core.model.pdp.DroneHW;
+import com.github.rinde.rinsim.core.model.pdp.DroneLW;
 import com.github.rinde.rinsim.core.model.pdp.PDPModel;
 import com.github.rinde.rinsim.core.model.road.PlaneRoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadUser;

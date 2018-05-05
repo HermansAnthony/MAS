@@ -1,22 +1,21 @@
-import com.github.rinde.rinsim.core.model.pdp.PDPModel;
-import com.github.rinde.rinsim.core.model.pdp.Parcel;
+package com.github.rinde.rinsim.core.model.pdp;
+
 import com.github.rinde.rinsim.core.model.road.RoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadModels;
 import com.github.rinde.rinsim.core.model.road.RoadUser;
 import com.github.rinde.rinsim.core.model.time.TimeLapse;
 import com.github.rinde.rinsim.geom.Point;
 import com.google.common.base.Optional;
-import pdp.DroneDTO;
 
 import java.util.Collection;
 
 
 public class DroneLW  extends Drone {
-    protected DroneLW() {
-        super(DroneDTO.builder()
+    public DroneLW() {
+        super(VehicleDTO.builder()
             .capacity(3500)
             .startPosition(new Point(50,50))
-            .speed(1000) // TODO find a way to scale linearly
+            .speed(22) // TODO find a way to scale linearly
             .build());
 
         payload = Optional.absent();
@@ -28,6 +27,7 @@ public class DroneLW  extends Drone {
     @Override
     protected void tickImpl(TimeLapse timeLapse) {
         RoadModel rm = getRoadModel();
+
 
         final PDPModel pm = getPDPModel();
 
@@ -66,26 +66,6 @@ public class DroneLW  extends Drone {
             rm.moveTo(this, payload.get().getDeliveryLocation(), timeLapse);
         }
 
-    }
-
-    @Override
-    public void afterTick(TimeLapse timeLapse) {
-        final PDPModel pm = getPDPModel();
-        if (!payload.isPresent()) {
-            return;
-        }
-
-        RoadModel rm = getRoadModel();
-        if (rm.getPosition(this) == payload.get().getDeliveryLocation()) {
-            System.out.println("Package delivered.");
-            pm.deliver(this, payload.get(), timeLapse);
-            rm.removeObject(rm.getObjects()
-                    .stream()
-                    .filter(obj -> rm.getPosition(obj) == payload.get().getDeliveryLocation() && obj instanceof Customer)
-                    .findFirst().get());
-            payload = Optional.absent();
-            hasOrder = false;
-        }
     }
 
 }

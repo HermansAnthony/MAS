@@ -1,6 +1,5 @@
-import com.github.rinde.rinsim.core.model.pdp.PDPModel;
-import com.github.rinde.rinsim.core.model.pdp.Parcel;
-import com.github.rinde.rinsim.core.model.pdp.ParcelDTO;
+package com.github.rinde.rinsim.core.model.pdp;
+
 import com.github.rinde.rinsim.core.model.road.RoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadUser;
 import com.github.rinde.rinsim.geom.Point;

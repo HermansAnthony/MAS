@@ -1,8 +1,5 @@
-import com.github.rinde.rinsim.core.model.pdp.PDPModel;
-import com.github.rinde.rinsim.core.model.pdp.Parcel;
-import com.github.rinde.rinsim.core.model.pdp.VehicleDTO;
-import com.github.rinde.rinsim.core.model.rand.RandomProvider;
-import com.github.rinde.rinsim.core.model.road.PlaneRoadModel;
+package com.github.rinde.rinsim.core.model.pdp;
+
 import com.github.rinde.rinsim.core.model.road.RoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadModels;
 import com.github.rinde.rinsim.core.model.road.RoadUser;
@@ -13,11 +10,11 @@ import com.google.common.base.Optional;
 import java.util.Collection;
 
 public class DroneHW extends Drone {
-    protected DroneHW() {
+    public DroneHW() {
         super(VehicleDTO.builder()
                 .capacity(9000)
                 .startPosition(new Point(600,800))
-                .speed(600) // TODO find a way to scale linearly
+                .speed(17) // TODO find a way to scale linearly
                 .build());
         payload = Optional.absent();
     }
@@ -31,7 +28,7 @@ public class DroneHW extends Drone {
 
         final PDPModel pm = getPDPModel();
 
-        Collection<RoadUser> roadUsers = RoadModels.findObjectsWithinRadius(rm.getPosition(this), rm, 10000);
+        Collection<RoadUser> roadUsers = RoadModels.findObjectsWithinRadius(rm.getPosition(this), rm, 200);
 
         if (!payload.isPresent()) {
             // Has no payload yet
@@ -66,26 +63,6 @@ public class DroneHW extends Drone {
             rm.moveTo(this, payload.get().getDeliveryLocation(), timeLapse);
         }
 
-    }
-
-    @Override
-    public void afterTick(TimeLapse timeLapse) {
-        final PDPModel pm = getPDPModel();
-        if (!payload.isPresent()) {
-            return;
-        }
-
-        RoadModel rm = getRoadModel();
-        if (rm.getPosition(this) == payload.get().getDeliveryLocation()) {
-            System.out.println("Package delivered.");
-            pm.deliver(this, payload.get(), timeLapse);
-            rm.removeObject(rm.getObjects()
-                    .stream()
-                    .filter(obj -> rm.getPosition(obj) == payload.get().getDeliveryLocation() && obj instanceof Customer)
-                    .findFirst().get());
-            payload = Optional.absent();
-            hasOrder = false;
-        }
     }
 
 }

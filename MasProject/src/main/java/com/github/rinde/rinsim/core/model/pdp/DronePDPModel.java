@@ -1,6 +1,5 @@
-package pdp;
+package com.github.rinde.rinsim.core.model.pdp;
 
-import com.github.rinde.rinsim.core.model.pdp.*;
 import com.github.rinde.rinsim.core.model.time.TimeLapse;
 import com.github.rinde.rinsim.event.EventAPI;
 import com.google.common.collect.ImmutableSet;
@@ -16,7 +15,7 @@ public class DronePDPModel extends PDPModel{
     }
 
     @Override
-    protected boolean doRegister(PDPObject object) {
+    protected boolean doRegister(PDPObject pdpObject) {
         return false;
     }
 
@@ -35,7 +34,7 @@ public class DronePDPModel extends PDPModel{
         return 0;
     }
 
-    @Override
+
     public void pickup(Vehicle vehicle, Parcel parcel, TimeLapse time) {
 
     }
@@ -56,7 +55,7 @@ public class DronePDPModel extends PDPModel{
     }
 
     @Override
-    public Collection<Parcel> getParcels(ParcelState state) {
+    public Collection<Parcel> getParcels(ParcelState parcelState) {
         return null;
     }
 
@@ -106,11 +105,6 @@ public class DronePDPModel extends PDPModel{
     }
 
     @Override
-    public boolean unregister(PDPObject element) {
-        return false;
-    }
-
-    @Override
     public void tick(TimeLapse timeLapse) {
 
     }
@@ -118,5 +112,10 @@ public class DronePDPModel extends PDPModel{
     @Override
     public void afterTick(TimeLapse timeLapse) {
 
+    }
+
+    @Override
+    public boolean unregister(com.github.rinde.rinsim.core.model.pdp.PDPObject pdpObject) {
+        return false;
     }
 }

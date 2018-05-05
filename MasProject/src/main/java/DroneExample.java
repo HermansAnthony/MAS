@@ -1,22 +1,16 @@
 import com.github.rinde.rinsim.core.Simulator;
-import com.github.rinde.rinsim.core.model.pdp.DefaultPDPModel;
-import com.github.rinde.rinsim.core.model.pdp.Parcel;
-import com.github.rinde.rinsim.core.model.pdp.ParcelDTO;
+import com.github.rinde.rinsim.core.model.energy.DefaultEnergyModel;
+import com.github.rinde.rinsim.core.model.pdp.*;
 import com.github.rinde.rinsim.core.model.road.PlaneRoadModel;
-import com.github.rinde.rinsim.core.model.road.RoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadModelBuilders;
 import com.github.rinde.rinsim.core.model.time.TickListener;
 import com.github.rinde.rinsim.core.model.time.TimeLapse;
 import com.github.rinde.rinsim.core.model.time.TimeModel;
-import com.github.rinde.rinsim.event.Listener;
-import com.github.rinde.rinsim.examples.taxi.TaxiExample;
 import com.github.rinde.rinsim.geom.Point;
 import com.github.rinde.rinsim.ui.View;
 import com.github.rinde.rinsim.ui.renderers.PlaneRoadModelRenderer;
 import com.github.rinde.rinsim.ui.renderers.RoadUserRenderer;
 import org.apache.commons.math3.random.RandomGenerator;
-import org.eclipse.swt.widgets.Display;
-import org.eclipse.swt.widgets.Monitor;
 
 import javax.annotation.Nullable;
 import javax.imageio.ImageIO;
@@ -44,7 +38,7 @@ public class DroneExample {
     private static final int amountChargersLW = 5;
     private static final int amountChargersHW = 5;
     private static final int amountRequests = 100;
-    private static final double orderProbability = 0.00005;
+    private static final double orderProbability = 0.005;
     private static final int serviceDuration = 60000;
     private static final int maxCapacity = 9000;
 
@@ -119,10 +113,11 @@ public class DroneExample {
                 .addModel(RoadModelBuilders.plane()
 //                    .withObjectRadius(droneRadius)
                     .withMinPoint(new Point(0,0))
-                    .withMaxPoint(resolution))
-//                    .withDistanceUnit(SI.METER)
-//                    .withSpeedUnit(SI.METERS_PER_SECOND)
-//                    .withMaxSpeed(1))
+                    .withMaxPoint(resolution)
+                    .withDistanceUnit(SI.METER)
+                    .withSpeedUnit(SI.METERS_PER_SECOND)
+                    .withMaxSpeed(1000))
+                .addModel(DefaultEnergyModel.builder())
                 .addModel(DefaultPDPModel.builder()) // TODO possibly define our own PDP model, extended from the PDP model class, see RinSim/core/src/main/java/com/github/rinde/rinsim/core/model/pdp/PDPModel.java
                 .addModel(view)
                 .build();
