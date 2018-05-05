@@ -1,5 +1,6 @@
 package com.github.rinde.rinsim.core.model.pdp;
 
+import com.github.rinde.rinsim.core.model.energy.EnergyDTO;
 import com.github.rinde.rinsim.core.model.road.RoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadModels;
 import com.github.rinde.rinsim.core.model.road.RoadUser;
@@ -16,7 +17,8 @@ public class DroneLW  extends Drone {
             .capacity(3500)
             .startPosition(new Point(50,50))
             .speed(22) // TODO find a way to scale linearly
-            .build());
+            .build(),
+            new EnergyDTO(2400)); // TODO adjust later to better value);
 
         payload = Optional.absent();
     }
@@ -26,10 +28,10 @@ public class DroneLW  extends Drone {
 
     @Override
     protected void tickImpl(TimeLapse timeLapse) {
-        RoadModel rm = getRoadModel();
-
-
+        final RoadModel rm = getRoadModel();
         final PDPModel pm = getPDPModel();
+
+        System.out.println("Battery level: " + battery.getBatteryLevel());
 
         Collection<RoadUser> roadUsers = RoadModels.findObjectsWithinRadius(rm.getPosition(this), rm, 10000);
 
@@ -58,7 +60,6 @@ public class DroneLW  extends Drone {
                     payload = Optional.absent();
                     return;
                 }
-//                pm.pickup(this, payload.get(), timeLapse);
                 hasOrder = true;
             }
         } else if (hasOrder) {

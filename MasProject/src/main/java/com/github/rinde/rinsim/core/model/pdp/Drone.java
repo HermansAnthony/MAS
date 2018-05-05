@@ -1,5 +1,6 @@
 package com.github.rinde.rinsim.core.model.pdp;
 
+import com.github.rinde.rinsim.core.model.energy.EnergyDTO;
 import com.github.rinde.rinsim.core.model.road.RoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadUser;
 import com.github.rinde.rinsim.core.model.time.TickListener;
@@ -10,10 +11,12 @@ public abstract class Drone extends Vehicle {
 
     protected boolean hasOrder;
     protected Optional<Parcel> payload;
+    public EnergyDTO battery;
 
 
-    protected Drone(VehicleDTO _dto) {
+    protected Drone(VehicleDTO _dto, EnergyDTO _battery) {
         super(_dto);
+        battery = _battery;
         hasOrder = false;
         payload = Optional.absent();
     }
@@ -67,8 +70,11 @@ public abstract class Drone extends Vehicle {
 
         @Override
         public void run() {
-            while (pdp.getVehicleState(Drone.this) == PDPModel.VehicleState.DELIVERING) {}
-            rm.removeObject(cust);
+            // TODO debug this and find fault
+//            while (pdp.getVehicleState(Drone.this) == PDPModel.VehicleState.DELIVERING) {}
+//            if (rm.containsObject(cust)) {
+//                rm.removeObject(cust);
+//            }
         }
     }
 

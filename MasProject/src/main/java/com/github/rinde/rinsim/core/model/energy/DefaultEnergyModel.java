@@ -2,6 +2,7 @@ package com.github.rinde.rinsim.core.model.energy;
 
 import com.github.rinde.rinsim.core.model.DependencyProvider;
 import com.github.rinde.rinsim.core.model.ModelBuilder;
+import com.github.rinde.rinsim.core.model.pdp.Drone;
 import com.github.rinde.rinsim.core.model.road.MoveEvent;
 import com.github.rinde.rinsim.core.model.road.PlaneRoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadModel;
@@ -15,21 +16,24 @@ import java.util.List;
 
 public class DefaultEnergyModel extends EnergyModel {
 
-    List<RoadUser> roadUsers;
+    List<RoadUser> drones;
+    ChargingPoint chargingPoint;
     RoadModel roadModel;
 
 
     public DefaultEnergyModel(RoadModel rm) {
         roadModel = rm;
-        roadUsers = new ArrayList<>();
+        drones = new ArrayList<>();
+        chargingPoint = null;
 
         rm.getEventAPI().addListener(new Listener() {
             @Override
             public void handleEvent(Event e) {
                 @SuppressWarnings("unchecked")
                 final MoveEvent event = (MoveEvent) e;
+                Drone drone = (Drone) event.roadUser;
+                drone.battery.decreaseBatteryLevel(1);
                 // TODO do something here.
-//                System.out.println("Event - " + event.pathProgress.distance() + " distance travelled.");
             }
         }, PlaneRoadModel.RoadEventType.MOVE);
     }
@@ -40,13 +44,22 @@ public class DefaultEnergyModel extends EnergyModel {
 
     @Override
     public boolean register(RoadUser roadUser) {
-        roadUsers.add(roadUser);
+        if (roadUser instanceof Drone) {
+            Drone drone = (Drone) roadUser;
+            drones.add(drone);
+        } else if (roadUser instanceof ChargingPoint) {
+            chargingPoint = (ChargingPoint) roadUser;
+        }
         return true;
     }
 
     @Override
     public boolean unregister(RoadUser roadUser) {
-        roadUsers.remove(roadUser);
+        if (roadUser instanceof Drone) {
+            drones.remove(roadUser);
+        } else if (roadUser instanceof ChargingPoint) {
+            chargingPoint = null;
+        }
         return true;
     }
 

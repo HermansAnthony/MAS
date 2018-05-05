@@ -1,5 +1,6 @@
 package com.github.rinde.rinsim.core.model.pdp;
 
+import com.github.rinde.rinsim.core.model.energy.EnergyDTO;
 import com.github.rinde.rinsim.core.model.road.RoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadModels;
 import com.github.rinde.rinsim.core.model.road.RoadUser;
@@ -15,7 +16,8 @@ public class DroneHW extends Drone {
                 .capacity(9000)
                 .startPosition(new Point(600,800))
                 .speed(17) // TODO find a way to scale linearly
-                .build());
+                .build(),
+                new EnergyDTO(1500)); // TODO adjust later to better value
         payload = Optional.absent();
     }
 
@@ -24,18 +26,17 @@ public class DroneHW extends Drone {
 
     @Override
     protected void tickImpl(TimeLapse timeLapse) {
-        RoadModel rm = getRoadModel();
-
+        final RoadModel rm = getRoadModel();
         final PDPModel pm = getPDPModel();
 
-        Collection<RoadUser> roadUsers = RoadModels.findObjectsWithinRadius(rm.getPosition(this), rm, 200);
+        Collection<RoadUser> roadUsers = RoadModels.findObjectsWithinRadius(rm.getPosition(this), rm, 10000);
 
         if (!payload.isPresent()) {
             // Has no payload yet
             for (RoadUser user : roadUsers) {
                 if (user instanceof Order) {
                     Order order = (Order) user;
-                    // HW drone can only take a payload of 9000 grams or less
+                    // HW drone can only take a payload of 3500 grams or less
                     if (order.getNeededCapacity() <= this.getCapacity()) {
                         payload = Optional.of((Parcel) order);
                         System.out.println("Moving to store...");
@@ -55,7 +56,6 @@ public class DroneHW extends Drone {
                     payload = Optional.absent();
                     return;
                 }
-//                pm.pickup(this, payload.get(), timeLapse);
                 hasOrder = true;
             }
         } else if (hasOrder) {

@@ -1,4 +1,5 @@
 import com.github.rinde.rinsim.core.Simulator;
+import com.github.rinde.rinsim.core.model.energy.ChargingPoint;
 import com.github.rinde.rinsim.core.model.energy.DefaultEnergyModel;
 import com.github.rinde.rinsim.core.model.pdp.*;
 import com.github.rinde.rinsim.core.model.road.PlaneRoadModel;
@@ -138,7 +139,7 @@ public class DroneExample {
             simulator.register(new DroneHW());
         }
 
-        simulator.register(new ChargingPoint(new Point(560,478)));
+        simulator.register(new ChargingPoint(new Point(560,478), amountChargersLW, amountChargersHW));
 
 
         simulator.addTickListener(new TickListener() {
