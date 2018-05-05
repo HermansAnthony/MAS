@@ -3,6 +3,8 @@ package com.github.rinde.rinsim.core.model.energy;
 import com.github.rinde.rinsim.core.model.DependencyProvider;
 import com.github.rinde.rinsim.core.model.ModelBuilder;
 import com.github.rinde.rinsim.core.model.pdp.Drone;
+import com.github.rinde.rinsim.core.model.pdp.DroneHW;
+import com.github.rinde.rinsim.core.model.pdp.DroneLW;
 import com.github.rinde.rinsim.core.model.road.MoveEvent;
 import com.github.rinde.rinsim.core.model.road.PlaneRoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadModel;
@@ -16,7 +18,7 @@ import java.util.List;
 
 public class DefaultEnergyModel extends EnergyModel {
 
-    List<RoadUser> drones;
+    List<Drone> drones;
     ChargingPoint chargingPoint;
     RoadModel roadModel;
 
@@ -45,8 +47,7 @@ public class DefaultEnergyModel extends EnergyModel {
     @Override
     public boolean register(RoadUser roadUser) {
         if (roadUser instanceof Drone) {
-            Drone drone = (Drone) roadUser;
-            drones.add(drone);
+            drones.add((Drone) roadUser);
         } else if (roadUser instanceof ChargingPoint) {
             chargingPoint = (ChargingPoint) roadUser;
         }
@@ -70,12 +71,27 @@ public class DefaultEnergyModel extends EnergyModel {
 
     @Override
     public void tick(TimeLapse timeLapse) {
+        for (Drone drone : drones) {
+            Class droneClass = DroneLW.class;
+            if (drone instanceof DroneHW) {
+                droneClass = DroneHW.class;
+            }
+            if (drone.wantsToCharge()
+                && !chargingPoint.chargersOccupied(droneClass)
+                && !chargingPoint.dronePresent(drone)) {
+                chargingPoint.chargeDrone(drone);
+            }
+        }
 
+        chargingPoint.charge(timeLapse);
     }
 
     @Override
     public void afterTick(TimeLapse timeLapse) {
-
+        // TODO fix this
+        for (Drone drone : chargingPoint.redeployChargedDrones()) {
+            drone.stopCharging();
+        }
     }
 
 

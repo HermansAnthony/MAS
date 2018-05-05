@@ -23,6 +23,10 @@ public class EnergyDTO {
         assert(batteryLevel + amount <= MAX_CAPACITY);
         batteryLevel += amount;
     }
+
+    public boolean fullyCharged() {
+        return MAX_CAPACITY == batteryLevel;
+    }
 }
 
 

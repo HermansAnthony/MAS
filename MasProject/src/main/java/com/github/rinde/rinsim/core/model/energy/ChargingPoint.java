@@ -5,6 +5,7 @@ import com.github.rinde.rinsim.core.model.pdp.DroneHW;
 import com.github.rinde.rinsim.core.model.pdp.DroneLW;
 import com.github.rinde.rinsim.core.model.road.RoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadUser;
+import com.github.rinde.rinsim.core.model.time.TimeLapse;
 import com.github.rinde.rinsim.geom.Point;
 
 import java.util.ArrayList;
@@ -24,8 +25,8 @@ public class ChargingPoint implements RoadUser {
         location = loc;
         MAX_CAPACITY_HW = maxCapacityHW;
         MAX_CAPACITY_LW = maxCapacityLW;
-        droneHW = new ArrayList<>(maxCapacityHW);
-        droneLW = new ArrayList<>(maxCapacityLW);
+        droneHW = new ArrayList<>();
+        droneLW = new ArrayList<>();
     }
 
     @Override
@@ -43,13 +44,47 @@ public class ChargingPoint implements RoadUser {
         }
     }
 
-    public int getOccupation(Class droneClass) {
+    public boolean chargersOccupied(Class droneClass) {
         if (droneClass == DroneLW.class) {
-            return droneLW.size();
+            return droneLW.size() == MAX_CAPACITY_LW;
         } else if (droneClass == DroneHW.class) {
-            return droneHW.size();
+            return droneHW.size() == MAX_CAPACITY_HW;
         }
-        return -1;
+        return false;
+    }
+
+    public boolean dronePresent(Drone drone) {
+        return droneHW.contains(drone) || droneLW.contains(drone);
+    }
+
+
+    public void charge(TimeLapse timeLapse) {
+        // TODO charge all the drones a certain amount
+        for (Drone drone : droneHW) {
+            drone.battery.recharge(1);
+        }
+        for (Drone drone : droneLW) {
+            drone.battery.recharge(1);
+        }
+    }
+
+    public List<Drone> redeployChargedDrones() {
+        List<Drone> drones = new ArrayList<>();
+
+        for (Drone drone : droneHW) {
+            if (drone.battery.fullyCharged()) {
+                drones.add(drone);
+                droneHW.remove(drone);
+            }
+        }
+        for (Drone drone : droneLW) {
+            if (drone.battery.fullyCharged()) {
+                drones.add(drone);
+                droneLW.remove(drone);
+            }
+        }
+
+        return drones;
     }
 
     public String getStatus() {

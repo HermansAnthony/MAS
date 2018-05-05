@@ -11,6 +11,7 @@ public abstract class Drone extends Vehicle {
 
     protected boolean hasOrder;
     protected Optional<Parcel> payload;
+    protected boolean isCharging;
     public EnergyDTO battery;
 
 
@@ -18,6 +19,7 @@ public abstract class Drone extends Vehicle {
         super(_dto);
         battery = _battery;
         hasOrder = false;
+        isCharging = false;
         payload = Optional.absent();
     }
 
@@ -53,7 +55,16 @@ public abstract class Drone extends Vehicle {
             ).start();
             payload = Optional.absent();
             hasOrder = false;
+            isCharging = true;
         }
+    }
+
+    public boolean wantsToCharge() {
+        return isCharging;
+    }
+
+    public void stopCharging() {
+        isCharging = false;
     }
 
 

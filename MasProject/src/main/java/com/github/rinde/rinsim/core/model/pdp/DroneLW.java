@@ -28,10 +28,18 @@ public class DroneLW  extends Drone {
 
     @Override
     protected void tickImpl(TimeLapse timeLapse) {
+        System.out.println("Battery level: " + battery.getBatteryLevel());
+
+        if (isCharging) {
+
+        } else {
+            handlePickupAndDelivery(timeLapse);
+        }
+    }
+
+    protected void handlePickupAndDelivery(TimeLapse timeLapse) {
         final RoadModel rm = getRoadModel();
         final PDPModel pm = getPDPModel();
-
-        System.out.println("Battery level: " + battery.getBatteryLevel());
 
         Collection<RoadUser> roadUsers = RoadModels.findObjectsWithinRadius(rm.getPosition(this), rm, 10000);
 
@@ -66,7 +74,6 @@ public class DroneLW  extends Drone {
             // Drone has the order, deliver it to the customer
             rm.moveTo(this, payload.get().getDeliveryLocation(), timeLapse);
         }
-
     }
 
 }
