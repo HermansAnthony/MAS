@@ -40,6 +40,10 @@ public class DefaultEnergyModel extends EnergyModel {
         }, PlaneRoadModel.RoadEventType.MOVE);
     }
 
+    public String getStatus(){
+        return chargingPoint.getStatus();
+    }
+
     public static Builder builder() {
         return new Builder();
     }

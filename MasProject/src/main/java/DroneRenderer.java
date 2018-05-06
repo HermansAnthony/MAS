@@ -1,5 +1,7 @@
 import com.github.rinde.rinsim.core.model.DependencyProvider;
 import com.github.rinde.rinsim.core.model.ModelBuilder;
+import com.github.rinde.rinsim.core.model.energy.DefaultEnergyModel;
+import com.github.rinde.rinsim.core.model.energy.EnergyModel;
 import com.github.rinde.rinsim.core.model.pdp.Drone;
 import com.github.rinde.rinsim.core.model.pdp.DroneHW;
 import com.github.rinde.rinsim.core.model.pdp.DroneLW;
@@ -11,6 +13,8 @@ import com.github.rinde.rinsim.ui.renderers.CanvasRenderer;
 import com.github.rinde.rinsim.ui.renderers.ViewPort;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.GC;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Shell;
 
 import java.util.Map;
 
@@ -18,12 +22,16 @@ import java.util.Map;
 public class DroneRenderer extends CanvasRenderer.AbstractCanvasRenderer {
     private final PlaneRoadModel rm;
     private final PDPModel pdpModel;
+    private final EnergyModel energyModel;
     private final int offsetY = 15;
     private final int offsetX = -5;
 
-    public DroneRenderer(PlaneRoadModel r, PDPModel p) {
+    public DroneRenderer(PlaneRoadModel r, PDPModel p, EnergyModel d) {
         rm = r;
         pdpModel = p;
+        System.out.println(p);
+        System.out.println(d);
+        energyModel = d;
     }
 
     static DroneRenderer.Builder builder() { return new Builder(); }
@@ -37,6 +45,9 @@ public class DroneRenderer extends CanvasRenderer.AbstractCanvasRenderer {
     public void renderDynamic(GC gc, ViewPort vp, long time) {
         final int r = 1;
         final Map<RoadUser, Point> objects = rm.getObjectsAndPositions();
+//        System.out.println(energyModel); // TODO fix this dependency mess 
+//        String status = energyModel.getStatus();
+//        showChargingInfo(status);
         synchronized (objects) {
             for (final Map.Entry<RoadUser, Point> entry : objects.entrySet()) {
                 final Point p = entry.getValue();
@@ -62,6 +73,14 @@ public class DroneRenderer extends CanvasRenderer.AbstractCanvasRenderer {
             text = "Load: " + Integer.toString(size) + " grams";
         }
         return text;
+    }
+
+    // Show the information of the charging station in a separate window
+    private void showChargingInfo(String status){
+        Display display = new Display();
+        Shell shell = new Shell(display);
+        shell.setBounds(10, 10, 500, 1000);
+        shell.setText(status);
     }
 
     private void renderDrone(RoadUser user, GC gc, ViewPort vp, int xpx, int ypx, int r){
@@ -95,7 +114,7 @@ public class DroneRenderer extends CanvasRenderer.AbstractCanvasRenderer {
         private static final long serialVersionUID = -1772420262312399129L;
 
         Builder() {
-            setDependencies(PlaneRoadModel.class, PDPModel.class);
+            setDependencies(PlaneRoadModel.class, PDPModel.class, EnergyModel.class);
         }
 
         @Override
@@ -103,7 +122,8 @@ public class DroneRenderer extends CanvasRenderer.AbstractCanvasRenderer {
             System.out.println("Drone renderer build");
             final PlaneRoadModel rm = dependencyProvider.get(PlaneRoadModel.class);
             final PDPModel pdpModel = dependencyProvider.get(PDPModel.class);
-            return new DroneRenderer(rm, pdpModel);
+            final EnergyModel energyModel = dependencyProvider.get(EnergyModel.class);
+            return new DroneRenderer(rm, pdpModel, energyModel);
         }
     }
 }
