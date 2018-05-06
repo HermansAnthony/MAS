@@ -71,16 +71,20 @@ public class ChargingPoint implements RoadUser {
     public List<Drone> redeployChargedDrones() {
         List<Drone> drones = new ArrayList<>();
 
-        for (Drone drone : droneHW) {
+        for (int i = 0; i < droneHW.size(); i++) {
+            Drone drone = droneHW.get(i);
             if (drone.battery.fullyCharged()) {
                 drones.add(drone);
                 droneHW.remove(drone);
+                i--;
             }
         }
-        for (Drone drone : droneLW) {
+        for (int i = 0; i < droneLW.size(); i++) {
+            Drone drone = droneLW.get(i);
             if (drone.battery.fullyCharged()) {
                 drones.add(drone);
                 droneLW.remove(drone);
+                i--;
             }
         }
 

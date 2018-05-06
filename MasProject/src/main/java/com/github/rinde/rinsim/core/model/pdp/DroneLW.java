@@ -28,7 +28,15 @@ public class DroneLW  extends Drone {
 
     @Override
     protected void tickImpl(TimeLapse timeLapse) {
-        System.out.println("Battery level: " + battery.getBatteryLevel());
+//        List<Integer> levels = new ArrayList<>();
+//        levels.add(500);
+//        levels.add(1000);
+//        levels.add(1500);
+//        levels.add(2000);
+//        levels.add(2399);
+//        if (levels.contains(battery.getBatteryLevel())) {
+//            System.out.println("Battery level: " + battery.getBatteryLevel());
+//        }
 
         if (isCharging) {
 

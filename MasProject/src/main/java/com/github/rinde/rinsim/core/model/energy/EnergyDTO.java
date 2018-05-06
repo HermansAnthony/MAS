@@ -1,5 +1,7 @@
 package com.github.rinde.rinsim.core.model.energy;
 
+import static java.lang.Math.min;
+
 public class EnergyDTO {
     final int MAX_CAPACITY;
     int batteryLevel;
@@ -20,8 +22,7 @@ public class EnergyDTO {
     }
 
     public void recharge(int amount) {
-        assert(batteryLevel + amount <= MAX_CAPACITY);
-        batteryLevel += amount;
+        batteryLevel = min(batteryLevel + amount, MAX_CAPACITY);
     }
 
     public boolean fullyCharged() {

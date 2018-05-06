@@ -88,14 +88,17 @@ public class DefaultEnergyModel extends EnergyModel {
         }
 
         chargingPoint.charge(timeLapse);
+
+        for (Drone drone : chargingPoint.redeployChargedDrones()) {
+            System.out.println("Removing drone with battery level: " + drone.battery.getBatteryLevel());
+            drone.stopCharging();
+        }
     }
 
     @Override
     public void afterTick(TimeLapse timeLapse) {
         // TODO fix this
-        for (Drone drone : chargingPoint.redeployChargedDrones()) {
-            drone.stopCharging();
-        }
+
     }
 
 
