@@ -13,6 +13,7 @@ import com.github.rinde.rinsim.core.model.time.TimeLapse;
 import com.github.rinde.rinsim.event.Event;
 import com.github.rinde.rinsim.event.Listener;
 
+import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -69,8 +70,11 @@ public class DefaultEnergyModel extends EnergyModel {
     }
 
     @Override
-    public <U> U get(Class<U> aClass) {
-        return null;
+    @Nonnull
+    public <U> U get(Class<U> type) {
+        synchronized (this) {
+            return type.cast(this);
+        }
     }
 
     @Override

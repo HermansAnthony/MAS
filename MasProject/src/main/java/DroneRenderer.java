@@ -119,6 +119,7 @@ public class DroneRenderer extends CanvasRenderer.AbstractCanvasRenderer {
             final PlaneRoadModel rm = dependencyProvider.get(PlaneRoadModel.class);
             final PDPModel pdpModel = dependencyProvider.get(PDPModel.class);
             final EnergyModel energyModel = dependencyProvider.get(EnergyModel.class);
+
             return new DroneRenderer(rm, pdpModel, energyModel);
         }
     }
