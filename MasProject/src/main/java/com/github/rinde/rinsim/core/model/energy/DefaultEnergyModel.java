@@ -20,14 +20,16 @@ public class DefaultEnergyModel extends EnergyModel {
     RoadModel roadModel;
 
 
-    public DefaultEnergyModel(RoadModel rm) {
+    private DefaultEnergyModel(RoadModel rm) {
         roadModel = rm;
         drones = new ArrayList<>();
         chargingPoint = null;
 
 
         rm.getEventAPI().addListener((Event e) -> {
-            @SuppressWarnings("unchecked")
+            if (!(e instanceof MoveEvent)) {
+                return;
+            }
             final MoveEvent event = (MoveEvent) e;
             Drone drone = (Drone) event.roadUser;
 
@@ -36,7 +38,7 @@ public class DefaultEnergyModel extends EnergyModel {
         }, PlaneRoadModel.RoadEventType.MOVE);
     }
 
-    public String getStatus(){
+    public String getStatus() {
         return chargingPoint.getStatus();
     }
 
