@@ -6,6 +6,9 @@ import com.github.rinde.rinsim.core.model.road.RoadUser;
 import com.github.rinde.rinsim.core.model.time.TimeLapse;
 import com.github.rinde.rinsim.geom.Point;
 import com.google.common.base.Optional;
+import com.google.common.base.Stopwatch;
+
+import java.util.concurrent.TimeUnit;
 
 public abstract class Drone extends Vehicle {
 
@@ -90,15 +93,11 @@ public abstract class Drone extends Vehicle {
 
         // If the drone arrived at the customer, deliver the package.
         if (rm.getPosition(this) == payload.get().getDeliveryLocation()) {
-            System.out.println("Package delivered.");
+            System.out.println("At destination.");
+
+            new Thread(new RemoveCustomer(rm, pdp, payload.get())).start();
             pdp.deliver(this, payload.get(), timeLapse);
 
-            new Thread(new RemoveCustomer(rm, pdp,
-                    rm.getObjects()
-                            .stream()
-                            .filter(obj -> rm.getPosition(obj) == payload.get().getDeliveryLocation() && obj instanceof Customer)
-                            .findFirst().get())
-            ).start();
             payload = Optional.absent();
             wantsToCharge = true;
         }
@@ -129,21 +128,29 @@ public abstract class Drone extends Vehicle {
     protected class RemoveCustomer implements Runnable {
         RoadModel rm;
         PDPModel pdp;
-        RoadUser cust;
+        RoadUser customer;
+        Stopwatch stopwatch;
 
-        RemoveCustomer(RoadModel _rm, PDPModel _pdp, RoadUser _cust) {
+        RemoveCustomer(RoadModel _rm, PDPModel _pdp, RoadUser _customer) {
             rm = _rm;
             pdp = _pdp;
-            cust = _cust;
+            customer = _customer;
+            stopwatch = Stopwatch.createStarted();
+
         }
 
         @Override
         public void run() {
-            // TODO debug this and find fault
-//            while (pdp.getVehicleState(Drone.this) == PDPModel.VehicleState.DELIVERING) {}
-//            if (rm.containsObject(cust)) {
-//                rm.removeObject(cust);
-//            }
+            while (pdp.getVehicleState(Drone.this) == PDPModel.VehicleState.DELIVERING) {
+                // Timeout of 30 seconds in order to kill thread if necessary.
+                if (stopwatch.elapsed(TimeUnit.SECONDS) > 30) {
+                    return;
+                }
+            }
+            System.out.println("Package delivered.");
+            if (rm.containsObject(customer)) {
+                rm.removeObject(customer);
+            }
         }
     }
 
