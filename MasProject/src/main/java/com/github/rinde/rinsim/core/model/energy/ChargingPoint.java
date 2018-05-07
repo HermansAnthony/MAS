@@ -11,7 +11,7 @@ import com.github.rinde.rinsim.geom.Point;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ChargingPoint implements RoadUser {
+public class ChargingPoint implements RoadUser, EnergyUser {
     Point location;
 
     final int MAX_CAPACITY_LW;
@@ -44,6 +44,17 @@ public class ChargingPoint implements RoadUser {
         }
     }
 
+    // TODO remove this -> provide better alternative
+    public boolean chargersOccupied(Drone drone) {
+        if (drone instanceof DroneLW) {
+            return droneLW.size() == MAX_CAPACITY_LW;
+        } else if (drone instanceof DroneHW) {
+            return droneHW.size() == MAX_CAPACITY_HW;
+        }
+        return false;
+    }
+
+    // TODO remove this -> provide better alternative
     public boolean chargersOccupied(Class droneClass) {
         if (droneClass == DroneLW.class) {
             return droneLW.size() == MAX_CAPACITY_LW;
@@ -58,6 +69,11 @@ public class ChargingPoint implements RoadUser {
     }
 
 
+    /**
+     * Charges all the drones present in the ChargingPoint.
+     * TODO This method also keeps track of the occupation of the charging station, since it is called every tick.
+     * @param timeLapse timelapse.
+     */
     public void charge(TimeLapse timeLapse) {
         // TODO charge all the drones a certain amount
         for (Drone drone : droneHW) {
@@ -96,5 +112,14 @@ public class ChargingPoint implements RoadUser {
         status += droneLW.size() + " lightweight drones are charging\n";
         status += droneHW.size() + " heavyweight drones are charging";
         return status;
+    }
+
+    @Override
+    public void initEnergyUser(EnergyModel energyModel) {
+        // TODO Empty for now, if necessary store energyModel here
+    }
+
+    public final Point getLocation() {
+        return location;
     }
 }

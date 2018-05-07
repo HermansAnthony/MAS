@@ -3,15 +3,11 @@ package com.github.rinde.rinsim.core.model.energy;
 import com.github.rinde.rinsim.core.model.DependencyProvider;
 import com.github.rinde.rinsim.core.model.ModelBuilder.AbstractModelBuilder;
 import com.github.rinde.rinsim.core.model.pdp.Drone;
-import com.github.rinde.rinsim.core.model.pdp.DroneHW;
-import com.github.rinde.rinsim.core.model.pdp.DroneLW;
 import com.github.rinde.rinsim.core.model.road.MoveEvent;
 import com.github.rinde.rinsim.core.model.road.PlaneRoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadModel;
-import com.github.rinde.rinsim.core.model.road.RoadUser;
 import com.github.rinde.rinsim.core.model.time.TimeLapse;
 import com.github.rinde.rinsim.event.Event;
-import com.github.rinde.rinsim.event.Listener;
 
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
@@ -29,15 +25,14 @@ public class DefaultEnergyModel extends EnergyModel {
         drones = new ArrayList<>();
         chargingPoint = null;
 
-        rm.getEventAPI().addListener(new Listener() {
-            @Override
-            public void handleEvent(Event e) {
-                @SuppressWarnings("unchecked")
-                final MoveEvent event = (MoveEvent) e;
-                Drone drone = (Drone) event.roadUser;
-                drone.battery.decreaseBatteryLevel(1);
-                // TODO do something here.
-            }
+
+        rm.getEventAPI().addListener((Event e) -> {
+            @SuppressWarnings("unchecked")
+            final MoveEvent event = (MoveEvent) e;
+            Drone drone = (Drone) event.roadUser;
+
+            // TODO decrease maybe more dynamically.
+            drone.battery.decreaseBatteryLevel(1);
         }, PlaneRoadModel.RoadEventType.MOVE);
     }
 
@@ -50,20 +45,22 @@ public class DefaultEnergyModel extends EnergyModel {
     }
 
     @Override
-    public boolean register(RoadUser roadUser) {
-        if (roadUser instanceof Drone) {
-            drones.add((Drone) roadUser);
-        } else if (roadUser instanceof ChargingPoint) {
-            chargingPoint = (ChargingPoint) roadUser;
+    public boolean register(EnergyUser energyUser) {
+        if (energyUser instanceof Drone) {
+            drones.add((Drone) energyUser);
+        } else if (energyUser instanceof ChargingPoint) {
+            chargingPoint = (ChargingPoint) energyUser;
         }
+
+        energyUser.initEnergyUser(this);
         return true;
     }
 
     @Override
-    public boolean unregister(RoadUser roadUser) {
-        if (roadUser instanceof Drone) {
-            drones.remove(roadUser);
-        } else if (roadUser instanceof ChargingPoint) {
+    public boolean unregister(EnergyUser energyUser) {
+        if (energyUser instanceof Drone) {
+            drones.remove(energyUser);
+        } else if (energyUser instanceof ChargingPoint) {
             chargingPoint = null;
         }
         return true;
@@ -79,21 +76,6 @@ public class DefaultEnergyModel extends EnergyModel {
 
     @Override
     public void tick(TimeLapse timeLapse) {
-        for (Drone drone : drones) {
-            Class droneClass = DroneLW.class;
-            if (drone instanceof DroneHW) {
-                droneClass = DroneHW.class;
-            }
-
-
-            if (drone.wantsToCharge()
-                && !chargingPoint.chargersOccupied(droneClass)
-                && !chargingPoint.dronePresent(drone)
-                && roadModel.getPosition(drone).equals(chargingPoint.location)) {
-                chargingPoint.chargeDrone(drone);
-            }
-        }
-
         chargingPoint.charge(timeLapse);
 
         for (Drone drone : chargingPoint.redeployChargedDrones()) {
@@ -103,14 +85,16 @@ public class DefaultEnergyModel extends EnergyModel {
     }
 
     @Override
-    public void afterTick(TimeLapse timeLapse) {
-        // TODO fix this
+    public void afterTick(TimeLapse timeLapse) {}
 
+    @Override
+    public ChargingPoint getChargingPoint() {
+        return chargingPoint;
     }
 
 
     public static class Builder extends
-            AbstractModelBuilder<DefaultEnergyModel, RoadUser> {
+            AbstractModelBuilder<DefaultEnergyModel, EnergyUser> {
 
         private Builder() {
             setProvidingTypes(EnergyModel.class);

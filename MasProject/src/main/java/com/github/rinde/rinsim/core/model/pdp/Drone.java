@@ -1,20 +1,23 @@
 package com.github.rinde.rinsim.core.model.pdp;
 
+import com.github.rinde.rinsim.core.model.energy.ChargingPoint;
 import com.github.rinde.rinsim.core.model.energy.EnergyDTO;
+import com.github.rinde.rinsim.core.model.energy.EnergyModel;
+import com.github.rinde.rinsim.core.model.energy.EnergyUser;
 import com.github.rinde.rinsim.core.model.road.RoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadUser;
 import com.github.rinde.rinsim.core.model.time.TimeLapse;
-import com.github.rinde.rinsim.geom.Point;
 import com.google.common.base.Optional;
 import com.google.common.base.Stopwatch;
 import util.Range;
 
 import java.util.concurrent.TimeUnit;
 
-public abstract class Drone extends Vehicle {
+public abstract class Drone extends Vehicle implements EnergyUser {
 
     private final Range SPEED_RANGE;
     private Optional<Parcel> payload;
+    private Optional<EnergyModel> energyModel;
     private boolean wantsToCharge;
     public EnergyDTO battery;
 
@@ -25,6 +28,12 @@ public abstract class Drone extends Vehicle {
         battery = _battery;
         wantsToCharge = false;
         payload = Optional.absent();
+        energyModel = Optional.absent();
+    }
+
+    @Override
+    public void initEnergyUser(EnergyModel model) {
+        energyModel = Optional.of(model);
     }
 
     @Override
@@ -33,7 +42,6 @@ public abstract class Drone extends Vehicle {
 
         // If the drone is carrying payload, adjust the ratio at which speed it moves
         double ratio = currentContentsSize == 0 ? 1 : 1 - (currentContentsSize / getCapacity());
-//        System.out.println("Speed (ratio=" + ratio + "): " + SPEED_RANGE.getSpeed(ratio));
         return SPEED_RANGE.getSpeed(ratio);
     }
 
@@ -42,25 +50,16 @@ public abstract class Drone extends Vehicle {
 
     @Override
     protected void tickImpl(TimeLapse timeLapse) {
-//        List<Integer> levels = new ArrayList<>();
-//        levels.add(500);
-//        levels.add(1000);
-//        levels.add(1500);
-//        levels.add(2000);
-//        levels.add(2399);
-//        if (levels.contains(battery.getBatteryLevel())) {
-//            System.out.println("Battery level: " + battery.getBatteryLevel());
-//        }
-
         final RoadModel rm = getRoadModel();
         final PDPModel pdp = getPDPModel();
+        final EnergyModel em = getEnergyModel();
 
         if (!timeLapse.hasTimeLeft()) {
             return;
         }
 
         if (wantsToCharge) {
-            moveToChargingPoint(rm, timeLapse);
+            moveToChargingPoint(rm, em, timeLapse);
         } else {
             handlePickupAndDelivery(rm, pdp, timeLapse);
         }
@@ -116,12 +115,16 @@ public abstract class Drone extends Vehicle {
         }
     }
 
-    private void moveToChargingPoint(RoadModel rm, TimeLapse timeLapse) {
-        // TODO experimental implementation for now, hardcoded
-        // TODO subclass vehicle in order to provide some way of accessing the energy model
-        Point chargingPointLocation = new Point(560,478);
-        if (!rm.getPosition(this).equals(chargingPointLocation)) {
-            rm.moveTo(this, chargingPointLocation, timeLapse);
+    private void moveToChargingPoint(RoadModel rm, EnergyModel em, TimeLapse timeLapse) {
+        final ChargingPoint chargingPoint = em.getChargingPoint();
+
+        if (!rm.getPosition(this).equals(chargingPoint.getLocation())) {
+            rm.moveTo(this, chargingPoint.getLocation(), timeLapse);
+        } else if (!chargingPoint.dronePresent(this)) {
+            // Only charge if there is a charger free
+            if (!chargingPoint.chargersOccupied(this)) {
+                chargingPoint.chargeDrone(this);
+            }
         }
     }
 
@@ -135,6 +138,10 @@ public abstract class Drone extends Vehicle {
 
     public void stopCharging() {
         wantsToCharge = false;
+    }
+
+    public EnergyModel getEnergyModel() {
+        return energyModel.get();
     }
 
 
