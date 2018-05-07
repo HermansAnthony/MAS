@@ -12,6 +12,7 @@ import com.github.rinde.rinsim.ui.View;
 import com.github.rinde.rinsim.ui.renderers.PlaneRoadModelRenderer;
 import com.github.rinde.rinsim.ui.renderers.RoadUserRenderer;
 import org.apache.commons.math3.random.RandomGenerator;
+import util.Range;
 
 import javax.annotation.Nullable;
 import javax.imageio.ImageIO;
@@ -35,6 +36,16 @@ public class DroneExample {
     // LW = light weight, HW = heavy weight
     private static final int amountDroneLW = 15;
     private static final int amountDroneHW = 15;
+
+    private static final Range speedDroneLW = new Range(17,22);
+    private static final Range speedDroneHW = new Range(11,22);
+
+    private static int capacityDroneLW = 3500; // Expressed in grams
+    private static int capacityDroneHW = 9000; // Expressed in grams
+
+    private static int batteryDroneLW = 2400;  // Expressed in seconds
+    private static int batteryDroneHW = 1500;  // Expressed in seconds
+
     private static final int droneRadius = 1;
     private static final int amountChargersLW = 5;
     private static final int amountChargersHW = 5;
@@ -135,10 +146,10 @@ public class DroneExample {
             simulator.register(new Store(storeLocation));
         }
         for (int i = 0; i < 1; i++) {
-            simulator.register(new DroneLW());
+            simulator.register(new DroneLW(speedDroneLW, capacityDroneLW, batteryDroneLW));
         }
         for (int i = 0; i < 1; i++) {
-            simulator.register(new DroneHW());
+            simulator.register(new DroneHW(speedDroneHW, capacityDroneHW, batteryDroneHW));
         }
 
 

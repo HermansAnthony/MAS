@@ -7,21 +7,34 @@ import com.github.rinde.rinsim.core.model.time.TimeLapse;
 import com.github.rinde.rinsim.geom.Point;
 import com.google.common.base.Optional;
 import com.google.common.base.Stopwatch;
+import util.Range;
 
 import java.util.concurrent.TimeUnit;
 
 public abstract class Drone extends Vehicle {
 
-    protected Optional<Parcel> payload;
-    protected boolean wantsToCharge;
+    private final Range SPEED_RANGE;
+    private Optional<Parcel> payload;
+    private boolean wantsToCharge;
     public EnergyDTO battery;
 
 
-    protected Drone(VehicleDTO _dto, EnergyDTO _battery) {
+    protected Drone(VehicleDTO _dto, EnergyDTO _battery, Range speedRange) {
         super(_dto);
+        SPEED_RANGE = speedRange;
         battery = _battery;
         wantsToCharge = false;
         payload = Optional.absent();
+    }
+
+    @Override
+    public double getSpeed() {
+        double currentContentsSize = getPDPModel().getContentsSize(this);
+
+        // If the drone is carrying payload, adjust the ratio at which speed it moves
+        double ratio = currentContentsSize == 0 ? 1 : 1 - (currentContentsSize / getCapacity());
+//        System.out.println("Speed (ratio=" + ratio + "): " + SPEED_RANGE.getSpeed(ratio));
+        return SPEED_RANGE.getSpeed(ratio);
     }
 
     @Override
@@ -125,7 +138,8 @@ public abstract class Drone extends Vehicle {
     }
 
 
-    protected class RemoveCustomer implements Runnable {
+    // TODO find better way of dealing with removal of customers than using threads.
+    private class RemoveCustomer implements Runnable {
         RoadModel rm;
         PDPModel pdp;
         RoadUser customer;
