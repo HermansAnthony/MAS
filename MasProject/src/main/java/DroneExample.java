@@ -129,8 +129,10 @@ public class DroneExample {
         final PlaneRoadModel planeRoadModel = simulator.getModelProvider().getModel(
                 PlaneRoadModel.class);
 
-        for (int i = 0; i < storeLocations.size(); i++) {
-            simulator.register(new Store(storeLocations.get(i)));
+        simulator.register(new ChargingPoint(new Point(560,478), amountChargersLW, amountChargersHW));
+
+        for (Point storeLocation : storeLocations) {
+            simulator.register(new Store(storeLocation));
         }
         for (int i = 0; i < 1; i++) {
             simulator.register(new DroneLW());
@@ -139,7 +141,6 @@ public class DroneExample {
             simulator.register(new DroneHW());
         }
 
-        simulator.register(new ChargingPoint(new Point(560,478), amountChargersLW, amountChargersHW));
 
 
         simulator.addTickListener(new TickListener() {

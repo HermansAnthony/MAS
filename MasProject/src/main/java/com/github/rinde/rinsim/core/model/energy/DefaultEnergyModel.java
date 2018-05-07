@@ -80,9 +80,12 @@ public class DefaultEnergyModel extends EnergyModel {
             if (drone instanceof DroneHW) {
                 droneClass = DroneHW.class;
             }
+
+
             if (drone.wantsToCharge()
                 && !chargingPoint.chargersOccupied(droneClass)
-                && !chargingPoint.dronePresent(drone)) {
+                && !chargingPoint.dronePresent(drone)
+                && roadModel.getPosition(drone).equals(chargingPoint.location)) {
                 chargingPoint.chargeDrone(drone);
             }
         }

@@ -3,49 +3,95 @@ package com.github.rinde.rinsim.core.model.pdp;
 import com.github.rinde.rinsim.core.model.energy.EnergyDTO;
 import com.github.rinde.rinsim.core.model.road.RoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadUser;
-import com.github.rinde.rinsim.core.model.time.TickListener;
 import com.github.rinde.rinsim.core.model.time.TimeLapse;
+import com.github.rinde.rinsim.geom.Point;
 import com.google.common.base.Optional;
 
 public abstract class Drone extends Vehicle {
 
-    protected boolean hasOrder;
     protected Optional<Parcel> payload;
-    protected boolean isCharging;
+    protected boolean wantsToCharge;
     public EnergyDTO battery;
 
 
     protected Drone(VehicleDTO _dto, EnergyDTO _battery) {
         super(_dto);
         battery = _battery;
-        hasOrder = false;
-        isCharging = false;
+        wantsToCharge = false;
         payload = Optional.absent();
     }
 
     @Override
     public void initRoadPDP(RoadModel pRoadModel, PDPModel pPdpModel) {}
 
-    /**
-     * Is called every tick. This replaces the
-     * {@link TickListener#tick(TimeLapse)} for vehicles.
-     * @param time The time lapse that can be used.
-     * @see TickListener#tick(TimeLapse)
-     */
-    protected abstract void tickImpl(TimeLapse time);
-
     @Override
-    public void afterTick(TimeLapse time) {
-        if (!payload.isPresent()) {
+    protected void tickImpl(TimeLapse timeLapse) {
+//        List<Integer> levels = new ArrayList<>();
+//        levels.add(500);
+//        levels.add(1000);
+//        levels.add(1500);
+//        levels.add(2000);
+//        levels.add(2399);
+//        if (levels.contains(battery.getBatteryLevel())) {
+//            System.out.println("Battery level: " + battery.getBatteryLevel());
+//        }
+
+        final RoadModel rm = getRoadModel();
+        final PDPModel pdp = getPDPModel();
+
+        if (!timeLapse.hasTimeLeft()) {
             return;
         }
 
-        final PDPModel pdp = getPDPModel();
-        final RoadModel rm = getRoadModel();
+        if (wantsToCharge) {
+            moveToChargingPoint(rm, timeLapse);
+        } else {
+            handlePickupAndDelivery(rm, pdp, timeLapse);
+        }
+    }
 
+    private void handlePickupAndDelivery(RoadModel rm, PDPModel pdp, TimeLapse timeLapse) {
+        if (!payload.isPresent()) {
+            getParcel(pdp);
+        } else if (pdp.getContents(this).isEmpty()) {
+            moveToStore(rm, pdp, timeLapse);
+        } else {
+            moveToCustomer(rm, pdp, timeLapse);
+        }
+    }
+
+    private void getParcel(PDPModel pdp) {
+        for (Parcel parcel : pdp.getParcels(PDPModel.ParcelState.AVAILABLE)) {
+            if (parcel.getNeededCapacity() <= this.getCapacity()) {
+                payload = Optional.of(parcel);
+                System.out.println("Moving to store...");
+            }
+        }
+    }
+
+    private void moveToStore(RoadModel rm, PDPModel pdp, TimeLapse timeLapse) {
+        rm.moveTo(this, payload.get().getPickupLocation(), timeLapse);
+
+        // If the drone has arrived at the store, pickup the parcel.
+        if (rm.getPosition(this) == payload.get().getPickupLocation()) {
+            try {
+                System.out.println("Arrived at store, moving to the customer...");
+                pdp.pickup(this, payload.get(), timeLapse);
+                System.out.println("Carrying parcel.");
+            } catch(IllegalArgumentException e){
+                System.out.println("Parcel is already in transport with another drone.");
+                payload = Optional.absent();
+            }
+        }
+    }
+
+    private void moveToCustomer(RoadModel rm, PDPModel pdp, TimeLapse timeLapse) {
+        rm.moveTo(this, payload.get().getDeliveryLocation(), timeLapse);
+
+        // If the drone arrived at the customer, deliver the package.
         if (rm.getPosition(this) == payload.get().getDeliveryLocation()) {
             System.out.println("Package delivered.");
-            pdp.deliver(this, payload.get(), time);
+            pdp.deliver(this, payload.get(), timeLapse);
 
             new Thread(new RemoveCustomer(rm, pdp,
                     rm.getObjects()
@@ -54,17 +100,29 @@ public abstract class Drone extends Vehicle {
                             .findFirst().get())
             ).start();
             payload = Optional.absent();
-            hasOrder = false;
-            isCharging = true;
+            wantsToCharge = true;
         }
     }
 
+    private void moveToChargingPoint(RoadModel rm, TimeLapse timeLapse) {
+        // TODO experimental implementation for now, hardcoded
+        // TODO subclass vehicle in order to provide some way of accessing the energy model
+        Point chargingPointLocation = new Point(560,478);
+        if (!rm.getPosition(this).equals(chargingPointLocation)) {
+            rm.moveTo(this, chargingPointLocation, timeLapse);
+        }
+    }
+
+
+    @Override
+    public void afterTick(TimeLapse time) {}
+
     public boolean wantsToCharge() {
-        return isCharging;
+        return wantsToCharge;
     }
 
     public void stopCharging() {
-        isCharging = false;
+        wantsToCharge = false;
     }
 
 

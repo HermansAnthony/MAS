@@ -93,7 +93,7 @@ public class ChargingPoint implements RoadUser {
 
     public String getStatus() {
         String status = "The current occupation of the charging point is: \n";
-        status += droneLW.size() + " lightweight drones are charging";
+        status += droneLW.size() + " lightweight drones are charging\n";
         status += droneHW.size() + " heavyweight drones are charging";
         return status;
     }

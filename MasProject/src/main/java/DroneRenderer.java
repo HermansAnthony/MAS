@@ -1,6 +1,5 @@
 import com.github.rinde.rinsim.core.model.DependencyProvider;
 import com.github.rinde.rinsim.core.model.ModelBuilder;
-import com.github.rinde.rinsim.core.model.energy.DefaultEnergyModel;
 import com.github.rinde.rinsim.core.model.energy.EnergyModel;
 import com.github.rinde.rinsim.core.model.pdp.Drone;
 import com.github.rinde.rinsim.core.model.pdp.DroneHW;
@@ -76,7 +75,7 @@ public class DroneRenderer extends CanvasRenderer.AbstractCanvasRenderer {
     }
 
     // Show the information of the charging station in a separate window
-    private void showChargingInfo(String status){
+    private void showChargingInfo(String status) {
         Display display = new Display();
         Shell shell = new Shell(display);
         shell.setBounds(10, 10, 500, 1000);
