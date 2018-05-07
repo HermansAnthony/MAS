@@ -27,7 +27,6 @@ import java.util.Scanner;
 
 
 public class DroneExample {
-    private DroneExample() {}
 
     private static final String map = "target/classes/leuven.png";
 
@@ -54,11 +53,7 @@ public class DroneExample {
     private static final int serviceDuration = 60000;
     private static final int maxCapacity = 9000;
 
-
-
     private static List<Point> storeLocations;
-
-
     private static Point resolution;
 
 
@@ -69,31 +64,12 @@ public class DroneExample {
      *             simulation.
      */
     public static void main(@Nullable String[] args) {
-        // Get resolution image
-        try {
-            BufferedImage bimg = ImageIO.read(new File(map));
-            resolution = new Point(bimg.getWidth(), bimg.getHeight());
-        } catch (IOException e) {
-            resolution = new Point(800,600);
-        }
-
-        // Read store locations from csv file
-        storeLocations = new ArrayList<>();
-        try {
-            Scanner scanner = new Scanner(new File("target/classes/stores.csv"));
-            scanner.useDelimiter(",|\n");
-            while(scanner.hasNext()){
-                storeLocations.add(new Point(new Double(scanner.next()), new Double(scanner.next())));
-            }
-            scanner.close();
-        } catch (FileNotFoundException e) {
-            System.err.println("Could not read csv file with store locations.");
-        }
-
-        System.out.println(storeLocations);
+        loadResolutionImage(map);
+        loadStoreLocations("src/main/resources/stores.csv");
 
         run(false, endTime);
     }
+
 
     /**
      * Run the example.
@@ -112,33 +88,24 @@ public class DroneExample {
      * @return The simulator instance.
      */
     public static Simulator run(boolean testing, final long endTime) {
-
-        System.out.println("Creating the view: INIT\n");
         final View.Builder view = createGui(testing);
-        System.out.println("Creating the view: DONE\n");
-
 
         // use map of leuven
-        System.out.println("Creating the simulator: INIT\n");
         final Simulator simulator = Simulator.builder()
-                .addModel(TimeModel.builder().withTickLength(250))
-                .addModel(RoadModelBuilders.plane()
-//                    .withObjectRadius(droneRadius)
-                    .withMinPoint(new Point(0,0))
-                    .withMaxPoint(resolution)
-                    .withDistanceUnit(SI.METER)
-                    .withSpeedUnit(SI.METERS_PER_SECOND)
-                    .withMaxSpeed(1000))
-                .addModel(DefaultEnergyModel.builder())
-                .addModel(DefaultPDPModel.builder()) // TODO possibly define our own PDP model, extended from the PDP model class, see RinSim/core/src/main/java/com/github/rinde/rinsim/core/model/pdp/PDPModel.java
-                .addModel(view)
-                .build();
-        System.out.println("Creating the simulator: DONE\n");
+            .addModel(TimeModel.builder().withTickLength(250))
+            .addModel(RoadModelBuilders.plane()
+//                .withObjectRadius(droneRadius)
+                .withMinPoint(new Point(0,0))
+                .withMaxPoint(resolution)
+                .withDistanceUnit(SI.METER)
+                .withSpeedUnit(SI.METERS_PER_SECOND)
+                .withMaxSpeed(1000))
+            .addModel(DefaultEnergyModel.builder())
+            .addModel(DefaultPDPModel.builder()) // TODO possibly define our own PDP model, extended from the PDP model class
+            .addModel(view)
+            .build();
         final RandomGenerator rng = simulator.getRandomGenerator();
-        System.out.println("Starting simulator ...\n");
-
-        final PlaneRoadModel planeRoadModel = simulator.getModelProvider().getModel(
-                PlaneRoadModel.class);
+        final PlaneRoadModel planeRoadModel = simulator.getModelProvider().getModel(PlaneRoadModel.class);
 
         simulator.register(new ChargingPoint(new Point(560,478), amountChargersLW, amountChargersHW));
 
@@ -151,8 +118,6 @@ public class DroneExample {
         for (int i = 0; i < 1; i++) {
             simulator.register(new DroneHW(speedDroneHW, capacityDroneHW, batteryDroneHW));
         }
-
-
 
         simulator.addTickListener(new TickListener() {
             @Override
@@ -175,38 +140,67 @@ public class DroneExample {
         });
 
         simulator.start();
-
-
         return simulator;
     }
 
     static View.Builder createGui(boolean testing) {
-
-
         View.Builder view = View.builder()
-                .with(PlaneRoadModelRenderer.builder()) // TODO verify if necessary here
-                .with(RoadUserRenderer.builder()
-                    .withImageAssociation(
-                        Customer.class, "/customer-32.png")
-                    .withImageAssociation(
-                        Store.class, "/store-40.png")
-                    .withImageAssociation(
-                        ChargingPoint.class, "/chargingPoint-40.png")
-                    .withImageAssociation(
-                        DroneLW.class, "/droneLW-32.png")
-                    .withImageAssociation(
-                        DroneHW.class, "/droneHW-32.png"))
-                .with(DroneRenderer.builder())
-                .with(MapRenderer.builder(map))
-                .withResolution(new Double(resolution.x).intValue(), new Double(resolution.y).intValue())
-                .withTitleAppendix("Drone Demo - WIP");
+            .with(PlaneRoadModelRenderer.builder())
+            .with(RoadUserRenderer.builder()
+                .withImageAssociation(
+                    Customer.class, "/customer-32.png")
+                .withImageAssociation(
+                    Store.class, "/store-40.png")
+                .withImageAssociation(
+                    ChargingPoint.class, "/chargingPoint-40.png")
+                .withImageAssociation(
+                    DroneLW.class, "/droneLW-32.png")
+                .withImageAssociation(
+                    DroneHW.class, "/droneHW-32.png"))
+            .with(DroneRenderer.builder())
+            .with(MapRenderer.builder(map))
+            .withResolution(new Double(resolution.x).intValue(), new Double(resolution.y).intValue())
+            .withTitleAppendix("Drone Demo - WIP");
 
         if (testing) {
             view = view.withAutoClose()
-                    .withAutoPlay()
-                    .withSimulatorEndTime(10000)
-                    .withSpeedUp(64);
+                .withAutoPlay()
+                .withSimulatorEndTime(10000)
+                .withSpeedUp(64);
         }
         return view;
+    }
+
+
+    /**
+     * Load the resolution of the given image.
+     * @param filename the image file.
+     */
+    private static void loadResolutionImage(String filename) {
+        try {
+            BufferedImage bufferedImage = ImageIO.read(new File(filename));
+            resolution = new Point(bufferedImage.getWidth(), bufferedImage.getHeight());
+        } catch (IOException e) {
+            resolution = new Point(800,600);
+        }
+    }
+
+    /**
+     * Reads the store locations from the specified csv file.
+     * @param filename the csv file.
+     */
+    private static void loadStoreLocations(String filename) {
+        storeLocations = new ArrayList<>();
+
+        try {
+            Scanner scanner = new Scanner(new File(filename));
+            scanner.useDelimiter("[,\n]");
+            while(scanner.hasNext()){
+                storeLocations.add(new Point(new Double(scanner.next()), new Double(scanner.next())));
+            }
+            scanner.close();
+        } catch (FileNotFoundException e) {
+            System.err.println("Could not read csv file with store locations.");
+        }
     }
 }

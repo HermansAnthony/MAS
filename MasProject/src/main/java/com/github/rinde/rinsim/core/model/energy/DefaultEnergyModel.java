@@ -1,7 +1,7 @@
 package com.github.rinde.rinsim.core.model.energy;
 
 import com.github.rinde.rinsim.core.model.DependencyProvider;
-import com.github.rinde.rinsim.core.model.ModelBuilder;
+import com.github.rinde.rinsim.core.model.ModelBuilder.AbstractModelBuilder;
 import com.github.rinde.rinsim.core.model.pdp.Drone;
 import com.github.rinde.rinsim.core.model.pdp.DroneHW;
 import com.github.rinde.rinsim.core.model.pdp.DroneLW;
@@ -105,8 +105,10 @@ public class DefaultEnergyModel extends EnergyModel {
     }
 
 
-    public static class Builder extends ModelBuilder.AbstractModelBuilder<DefaultEnergyModel, RoadUser> {
-        public Builder() {
+    public static class Builder extends
+            AbstractModelBuilder<DefaultEnergyModel, RoadUser> {
+
+        private Builder() {
             setProvidingTypes(EnergyModel.class);
             setDependencies(RoadModel.class);
         }

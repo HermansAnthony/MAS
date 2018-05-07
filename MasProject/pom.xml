@@ -23,6 +23,12 @@
             <artifactId>auto-value-annotations</artifactId>
             <version>1.6</version>
         </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-nop</artifactId> <!--Can change this to slf4j-simple if desired-->
+            <version>1.7.25</version>
+        </dependency>
+
     </dependencies>
 
     <build>

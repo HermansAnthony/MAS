@@ -1,5 +1,5 @@
 import com.github.rinde.rinsim.core.model.DependencyProvider;
-import com.github.rinde.rinsim.core.model.ModelBuilder;
+import com.github.rinde.rinsim.core.model.ModelBuilder.AbstractModelBuilder;
 import com.github.rinde.rinsim.core.model.energy.EnergyModel;
 import com.github.rinde.rinsim.core.model.pdp.Drone;
 import com.github.rinde.rinsim.core.model.pdp.DroneHW;
@@ -28,8 +28,6 @@ public class DroneRenderer extends CanvasRenderer.AbstractCanvasRenderer {
     public DroneRenderer(PlaneRoadModel r, PDPModel p, EnergyModel d) {
         rm = r;
         pdpModel = p;
-        System.out.println(p);
-        System.out.println(d);
         energyModel = d;
     }
 
@@ -108,7 +106,7 @@ public class DroneRenderer extends CanvasRenderer.AbstractCanvasRenderer {
     }
 
     final static class Builder extends
-            ModelBuilder.AbstractModelBuilder<DroneRenderer, Void> {
+            AbstractModelBuilder<DroneRenderer, Void> {
 
         private static final long serialVersionUID = -1772420262312399129L;
 
@@ -118,7 +116,6 @@ public class DroneRenderer extends CanvasRenderer.AbstractCanvasRenderer {
 
         @Override
         public DroneRenderer build(DependencyProvider dependencyProvider) {
-            System.out.println("Drone renderer build");
             final PlaneRoadModel rm = dependencyProvider.get(PlaneRoadModel.class);
             final PDPModel pdpModel = dependencyProvider.get(PDPModel.class);
             final EnergyModel energyModel = dependencyProvider.get(EnergyModel.class);
