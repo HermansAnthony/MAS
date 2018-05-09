@@ -133,15 +133,15 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
     }
 
     private void moveToCustomer(RoadModel rm, PDPModel pdp, TimeLapse timeLapse) {
-        rm.moveTo(this, payload.get().getDeliveryLocation(), timeLapse);
+        Order order = (Order) payload.get();
+        rm.moveTo(this, order.getDeliveryLocation(), timeLapse);
 
         // If the drone arrived at the customer, deliver the package.
-        if (rm.getPosition(this) == payload.get().getDeliveryLocation()) {
+        if (rm.getPosition(this) == order.getDeliveryLocation()) {
             System.out.println("At destination.");
 
-            // TODO fix this again
-            new Thread(new RemoveCustomer(rm, pdp, payload.get())).start();
-            pdp.deliver(this, payload.get(), timeLapse);
+            new Thread(new RemoveCustomer(rm, pdp, order.getCustomer())).start();
+            pdp.deliver(this, order, timeLapse);
 
             payload = Optional.absent();
             wantsToCharge = true;

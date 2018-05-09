@@ -41,6 +41,7 @@ public class Order extends Parcel implements TickListener {
             for (Ant ant : temporaryAnts) {
                 ant.returnToPrimaryAgent();
             }
+            temporaryAnts.clear();
         }
     }
 
