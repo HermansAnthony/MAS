@@ -3,6 +3,7 @@ package com.github.rinde.rinsim.core.model.pdp;
 import com.github.rinde.rinsim.core.model.ant.Ant;
 import com.github.rinde.rinsim.core.model.ant.AntReceiver;
 import com.github.rinde.rinsim.core.model.ant.ExplorationAnt;
+import com.github.rinde.rinsim.core.model.ant.IntentionAnt;
 import com.github.rinde.rinsim.core.model.energy.ChargingPoint;
 import com.github.rinde.rinsim.core.model.energy.EnergyDTO;
 import com.github.rinde.rinsim.core.model.energy.EnergyModel;
@@ -10,22 +11,29 @@ import com.github.rinde.rinsim.core.model.energy.EnergyUser;
 import com.github.rinde.rinsim.core.model.road.RoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadUser;
 import com.github.rinde.rinsim.core.model.time.TimeLapse;
+import com.github.rinde.rinsim.geom.Point;
 import com.google.common.base.Optional;
 import com.google.common.base.Stopwatch;
 import util.Range;
+import util.Tuple;
 
-import java.util.HashMap;
-import java.util.Map;
+import javax.measure.unit.SI;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
 
     private final Range SPEED_RANGE;
     private Optional<Parcel> payload;
+
+    // Energy related stuff
     private Optional<EnergyModel> energyModel;
     private boolean wantsToCharge;
-    private Map<Ant, Boolean> explorationAnts;
     public EnergyDTO battery;
+
+    // Delegate MAS stuff
+    private Map<ExplorationAnt, Boolean> explorationAnts;
+    private Map<IntentionAnt, Tuple<Boolean, Boolean>> intentionAnt;
 
 
     protected Drone(VehicleDTO _dto, EnergyDTO _battery, Range speedRange) {
@@ -36,6 +44,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
         payload = Optional.absent();
         energyModel = Optional.absent();
         explorationAnts = new HashMap<>();
+        intentionAnt = new HashMap<>();
     }
 
     @Override
@@ -65,7 +74,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
             return;
         }
 
-        delegateMAS();
+        delegateMAS(timeLapse);
 
         if (wantsToCharge) {
             moveToChargingPoint(rm, em, timeLapse);
@@ -74,26 +83,93 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
         }
     }
 
-    private void delegateMAS() {
+    private void delegateMAS(TimeLapse timeLapse) {
         if (explorationAnts.isEmpty()) {
-            sendOutExplorationAnts();
+            spawnExplorationAnts();
         } else {
+            // TODO check if intention ant has returned and reservation has succeeded
+            // TODO send exploration ants continually
             // Check if all the exploration ants have returned yet
-            if (!explorationAnts.values().contains(Boolean.FALSE)) {
-                // TODO Do something with the ants
-                explorePossibleOptions();
+            if (!explorationAnts.values().contains(false)) {
+                spawnIntentionAnt(timeLapse);
             }
         }
     }
 
-    private void explorePossibleOptions() {
-        // Send out intention ants dependent on desired.
+    private void spawnIntentionAnt(TimeLapse timeLapse) {
+        /**
+         * Send out intention ants dependent on desired belief.
+         *
+         * Used heuristics (in respective order):
+         *  - battery life
+         *  - order urgency
+         *  - charging point occupation
+         *  - travel distance
+         */
+
+        Order bestOrder = null;
+        double bestMerit = -1;
+
+        for (ExplorationAnt ant : explorationAnts.keySet()) {
+            Order order = (Order) ant.getParcel();
+            if (order.isReserved())
+                continue;
+
+            double merit = determineBenefits(order, timeLapse);
+
+            if (merit > bestMerit) {
+                bestMerit = merit;
+                bestOrder = order;
+            }
+        }
+
+        if (bestOrder == null) {
+            return;
+        }
+
+        IntentionAnt ant = new IntentionAnt(this);
+        intentionAnt.put(ant, new Tuple<>(false, false));
+        bestOrder.sendAnt(ant);
 
     }
 
-    private void sendOutExplorationAnts() {
+    private double determineBenefits(Order order, TimeLapse timeLapse) {
+        double merit = 0;
+
+        // TODO battery usage per meter for more accurate results
+        double batteryPercentage = this.battery.getBatteryLevel() / this.battery.getMaxCapacity();
+        if (batteryPercentage < 0.2) {
+            return -1;
+        }
+        merit += batteryPercentage * 100;
+
+        double percentageTimeLeft = (order.getDeliveryTimeWindow().end() - timeLapse.getTime()) /
+                (order.getDeliveryTimeWindow().end() - order.getOrderAnnounceTime());
+        merit += (1 - percentageTimeLeft) * 100;
+
+        // TODO same as above, for chargingPoint calculations
+        merit += getEnergyModel().getChargingPoint().chargersOccupied(this) ? 50 : 0;
+
+
+        List<Point> path =
+            new ArrayList<>(Arrays.asList(getRoadModel().getPosition(this), order.getPickupLocation(), order.getDeliveryLocation()));
+        double travelDistance = getRoadModel().getDistanceOfPath(path).doubleValue(SI.METER);
+        double travelCapacity = getTravelCapacity();
+
+        merit += (travelDistance / travelCapacity) * 100;
+
+        return merit;
+    }
+
+    protected double getTravelCapacity() {
+        return SPEED_RANGE.getSpeed(0) * battery.getMaxCapacity();
+    }
+
+    private void spawnExplorationAnts() {
         for (Order order : getRoadModel().getObjectsOfType(Order.class)) {
-            order.sendAnt(new ExplorationAnt(this));
+            ExplorationAnt explorationAnt = new ExplorationAnt(this);
+            explorationAnts.put(explorationAnt, Boolean.FALSE);
+            order.sendAnt(explorationAnt);
         }
     }
 
@@ -176,7 +252,10 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
 
     public void receiveAnt(Ant ant) {
         if (ant instanceof ExplorationAnt) {
-            explorationAnts.replace(ant, Boolean.TRUE);
+            explorationAnts.replace((ExplorationAnt) ant, true);
+        } else if (ant instanceof IntentionAnt) {
+            IntentionAnt intAnt = (IntentionAnt) ant;
+            intentionAnt.replace(intAnt, new Tuple<>(true, intAnt.reservationApproved));
         }
     }
 

@@ -130,6 +130,8 @@ public class DroneExample {
                     ParcelDTO orderData = Parcel.builder(storeLocations.get(randomStore),location)
                             .serviceDuration(serviceDuration)
                             .neededCapacity(1000 + rng.nextInt(maxCapacity - 1000)) // Capacity is measured in grams
+                            .deliveryDuration(5)
+                            .pickupDuration(5)
                             .buildDTO();
                     simulator.register(new Order(orderData, customer));
                 }

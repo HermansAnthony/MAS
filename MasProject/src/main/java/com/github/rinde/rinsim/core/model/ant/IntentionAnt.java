@@ -1,7 +1,13 @@
 package com.github.rinde.rinsim.core.model.ant;
 
+import com.github.rinde.rinsim.core.model.pdp.Drone;
+
 public class IntentionAnt extends Ant {
-    public IntentionAnt(AntReceiver _primaryAgent) {
+
+    public boolean reservationApproved;
+
+    public IntentionAnt(Drone _primaryAgent) {
         super(_primaryAgent);
+        reservationApproved = false;
     }
 }

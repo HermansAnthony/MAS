@@ -28,6 +28,10 @@ public class EnergyDTO {
     public boolean fullyCharged() {
         return MAX_CAPACITY == batteryLevel;
     }
+
+    public int getMaxCapacity() {
+        return MAX_CAPACITY;
+    }
 }
 
 
