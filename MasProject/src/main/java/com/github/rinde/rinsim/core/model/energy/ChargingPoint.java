@@ -11,14 +11,15 @@ import com.github.rinde.rinsim.geom.Point;
 import java.util.ArrayList;
 import java.util.List;
 
+// TODO could maybe provide templates here
 public class ChargingPoint implements RoadUser, EnergyUser {
-    Point location;
+    private Point location;
 
-    final int MAX_CAPACITY_LW;
-    final int MAX_CAPACITY_HW;
+    private final int MAX_CAPACITY_LW;
+    private final int MAX_CAPACITY_HW;
 
-    List<DroneLW> droneLW;
-    List<DroneHW> droneHW;
+    private List<DroneLW> droneLW;
+    private List<DroneHW> droneHW;
 
 
     public ChargingPoint(Point loc, int maxCapacityLW, int maxCapacityHW) {

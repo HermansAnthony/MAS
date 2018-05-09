@@ -1,5 +1,8 @@
 package com.github.rinde.rinsim.core.model.pdp;
 
+import com.github.rinde.rinsim.core.model.ant.Ant;
+import com.github.rinde.rinsim.core.model.ant.AntReceiver;
+import com.github.rinde.rinsim.core.model.ant.ExplorationAnt;
 import com.github.rinde.rinsim.core.model.energy.ChargingPoint;
 import com.github.rinde.rinsim.core.model.energy.EnergyDTO;
 import com.github.rinde.rinsim.core.model.energy.EnergyModel;
@@ -11,14 +14,17 @@ import com.google.common.base.Optional;
 import com.google.common.base.Stopwatch;
 import util.Range;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-public abstract class Drone extends Vehicle implements EnergyUser {
+public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
 
     private final Range SPEED_RANGE;
     private Optional<Parcel> payload;
     private Optional<EnergyModel> energyModel;
     private boolean wantsToCharge;
+    private Map<Ant, Boolean> explorationAnts;
     public EnergyDTO battery;
 
 
@@ -29,6 +35,7 @@ public abstract class Drone extends Vehicle implements EnergyUser {
         wantsToCharge = false;
         payload = Optional.absent();
         energyModel = Optional.absent();
+        explorationAnts = new HashMap<>();
     }
 
     @Override
@@ -58,10 +65,35 @@ public abstract class Drone extends Vehicle implements EnergyUser {
             return;
         }
 
+        delegateMAS();
+
         if (wantsToCharge) {
             moveToChargingPoint(rm, em, timeLapse);
         } else {
             handlePickupAndDelivery(rm, pdp, timeLapse);
+        }
+    }
+
+    private void delegateMAS() {
+        if (explorationAnts.isEmpty()) {
+            sendOutExplorationAnts();
+        } else {
+            // Check if all the exploration ants have returned yet
+            if (!explorationAnts.values().contains(Boolean.FALSE)) {
+                // TODO Do something with the ants
+                explorePossibleOptions();
+            }
+        }
+    }
+
+    private void explorePossibleOptions() {
+        // Send out intention ants dependent on desired.
+
+    }
+
+    private void sendOutExplorationAnts() {
+        for (Order order : getRoadModel().getObjectsOfType(Order.class)) {
+            order.sendAnt(new ExplorationAnt(this));
         }
     }
 
@@ -107,6 +139,7 @@ public abstract class Drone extends Vehicle implements EnergyUser {
         if (rm.getPosition(this) == payload.get().getDeliveryLocation()) {
             System.out.println("At destination.");
 
+            // TODO fix this again
             new Thread(new RemoveCustomer(rm, pdp, payload.get())).start();
             pdp.deliver(this, payload.get(), timeLapse);
 
@@ -132,9 +165,6 @@ public abstract class Drone extends Vehicle implements EnergyUser {
     @Override
     public void afterTick(TimeLapse time) {}
 
-    public boolean wantsToCharge() {
-        return wantsToCharge;
-    }
 
     public void stopCharging() {
         wantsToCharge = false;
@@ -142,6 +172,12 @@ public abstract class Drone extends Vehicle implements EnergyUser {
 
     public EnergyModel getEnergyModel() {
         return energyModel.get();
+    }
+
+    public void receiveAnt(Ant ant) {
+        if (ant instanceof ExplorationAnt) {
+            explorationAnts.replace(ant, Boolean.TRUE);
+        }
     }
 
 
