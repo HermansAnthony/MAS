@@ -9,11 +9,11 @@ public class DroneHW extends Drone {
 
     public DroneHW(Range speedRange, int capacity, int batteryLevel, Point chargingLocation) {
         super(VehicleDTO.builder()
-                .capacity(capacity)
-                .startPosition(chargingLocation)
-                .speed(speedRange.getSpeed(1))
-                .build(),
-                new EnergyDTO(batteryLevel), speedRange);
+            .capacity(capacity)
+            .startPosition(chargingLocation)
+            .speed(speedRange.getSpeed(1))
+            .build(),
+            new EnergyDTO(batteryLevel), speedRange);
     }
 
     @Override

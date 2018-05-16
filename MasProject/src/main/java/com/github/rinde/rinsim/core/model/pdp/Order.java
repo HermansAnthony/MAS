@@ -44,7 +44,7 @@ public class Order extends Parcel implements TickListener {
             this.reserve(intentionAnt.getPrimaryAgent());
             intentionAnt.reservationApproved = true;
         } else {
-            intentionAnt.reservationApproved = false;
+            intentionAnt.reservationApproved = reserver.get().equals(intentionAnt.getPrimaryAgent());
         }
 
         synchronized(temporaryAnts) {
@@ -52,7 +52,7 @@ public class Order extends Parcel implements TickListener {
         }
     }
 
-    synchronized public void reserve(Vehicle vehicle) {
+    synchronized private void reserve(Vehicle vehicle) {
         reserver = Optional.of(vehicle);
     }
 

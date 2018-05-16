@@ -102,31 +102,54 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
     private void delegateMAS(TimeLapse timeLapse) {
         switch (state){
             case initialState:
+                // Initially, spawn exploration ants to get information about all possible orders.
+                explorationAnts.clear();
+                intentionAnt.clear();
                 spawnExplorationAnts();
-                state = delegateMasState.explorationAntsReturned;
+
+                // Only leave this state if exploration ants have been spawned.
+                if (!explorationAnts.isEmpty()) {
+                    state = delegateMasState.explorationAntsReturned;
+                }
                 break;
             case explorationAntsReturned:
+                // Check if all exploration ants have returned
                 if (!explorationAnts.values().contains(false)) {
-                    spawnIntentionAnt(timeLapse);
+                    // Send out an intention ant to the order with the highest merit
+                    Order order = getBestOrder(timeLapse);
+                    if (order == null) {
+                        state = delegateMasState.initialState;
+                        break;
+                    }
+                    spawnIntentionAnt(order);
+                    // Clear all the exploration ants since they are outdated at this point
+                    explorationAnts.clear();
+
                     state = delegateMasState.intentionAntReturned;
                 }
                 break;
             case intentionAntReturned:
+                // If the intentionAnt has been cleared, the order has been delivered,
+                // and we need to start looking for a new one.
                 if (intentionAnt.isEmpty()){
                     state = delegateMasState.initialState;
                     break;
                 }
+
                 Map.Entry<IntentionAnt, Boolean> entry = intentionAnt.entrySet().iterator().next();
                 // Ant has returned and has an approved reservation
                 if (entry.getValue() && entry.getKey().reservationApproved){
                     if(!payload.isPresent()){
-                        System.out.println("Payload is filled by the intention ant");
                         payload = Optional.of(entry.getKey().reservedOrder);
                     }
                     entry.setValue(false); // Intention ant needs to go away again
                     entry.getKey().reservationApproved = false;
                     entry.getKey().reservedOrder.receiveAnt(entry.getKey()); // TODO For now no reconsideration whatsoever
+                } else if (entry.getValue() && !entry.getKey().reservationApproved) {
+                    // The order has been reserved for another package, resend exploration ants and find a new order.
+                    state = delegateMasState.initialState;
                 }
+                break;
             case spawnExplorationAnts:
                 // TODO when reconsideration is needed continuously resend exploration ants
                 // TODO write consideration to logging file
@@ -135,24 +158,21 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
         }
     }
 
-    private void spawnIntentionAnt(TimeLapse timeLapse) {
-        /**
-         * Send out intention ants dependent on desired belief.
-         *
-         * Used heuristics (in respective order):
-         *  - battery life
-         *  - order urgency
-         *  - charging point occupation
-         *  - travel distance
-         */
+    private void spawnIntentionAnt(Order order) {
+        IntentionAnt ant = new IntentionAnt(this, order);
+        intentionAnt.put(ant, false);
+        order.receiveAnt(ant);
+    }
 
+    private Order getBestOrder(TimeLapse timeLapse) {
         Order bestOrder = null;
-        double bestMerit = -1;
+        double bestMerit = Double.NEGATIVE_INFINITY;
 
         for (ExplorationAnt ant : explorationAnts.keySet()) {
             Order order = (Order) ant.getParcel();
-            if (order.isReserved())
+            if (order.isReserved() || order.getNeededCapacity() > this.getCapacity())
                 continue;
+
 
             double merit = determineBenefits(order, timeLapse);
 
@@ -162,24 +182,23 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
             }
         }
 
-        if (bestOrder == null) {
-            return;
+        // Log the intention ant and merit calculation in the log file
+        if (bestOrder != null) {
+            String description = " Best merit: " + bestMerit + ".\n";
+            description += "Intention ant is sent to order (" + bestOrder.getOrderDescription() +").\n";
+            monitor.writeToFile(timeLapse.getStartTime(), description);
         }
 
-        // Log the intention ant and merit calculation in the log file
-        String description = " Best merit: " + bestMerit + ".\n";
-        description += "Intention ant is sent to order (" + bestOrder.getOrderDescription() +").\n";
-//        System.out.println(description);
-
-        monitor.writeToFile(timeLapse.getStartTime(), description);
-
-        IntentionAnt ant = new IntentionAnt(this, bestOrder);
-        intentionAnt.put(ant, false);
-        bestOrder.receiveAnt(ant);
+        return bestOrder;
     }
 
     /**
      * Returns the merit for a certain order. Orders with higher merit are more beneficial to drones than order with low merit.
+     * Used heuristics (in respective order):
+     *  - battery life
+     *  - order urgency
+     *  - charging point occupation
+     *  - travel distance
      * @param order The order for which the merit is calculated.
      * @param timeLapse The time at which this is calculated.
      * @return The merit associated with the specific order.
@@ -234,7 +253,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
     private void spawnExplorationAnts() {
         for (Order order : getRoadModel().getObjectsOfType(Order.class)) {
             ExplorationAnt explorationAnt = new ExplorationAnt(this);
-            explorationAnts.put(explorationAnt, Boolean.FALSE);
+            explorationAnts.put(explorationAnt, false);
             order.receiveAnt(explorationAnt);
         }
     }
@@ -269,7 +288,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
                 pdp.pickup(this, payload.get(), timeLapse);
                 System.out.println("Carrying parcel.");
             } catch(IllegalArgumentException e){
-                System.out.println("Parcel is already in transport with another drone.");
+                System.out.println("Parcel is already in transport with another drone. ");
                 payload = Optional.absent();
             }
         }
