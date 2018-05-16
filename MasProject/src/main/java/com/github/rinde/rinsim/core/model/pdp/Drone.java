@@ -14,8 +14,8 @@ import com.github.rinde.rinsim.core.model.time.TimeLapse;
 import com.google.common.base.Optional;
 import com.google.common.base.Stopwatch;
 import util.BatteryCalculations;
+import util.Monitor;
 import util.Range;
-
 import javax.measure.unit.SI;
 import java.util.HashMap;
 import java.util.Map;
@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit;
 
 public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
     public static int nextID = 0;
-    private int ID;
+    protected int ID;
     private final Range SPEED_RANGE;
     private Optional<Parcel> payload;
 
@@ -37,8 +37,8 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
     private Map<ExplorationAnt, Boolean> explorationAnts;
     private Map<IntentionAnt, Boolean> intentionAnt; // Just one intention ant
 
-    // TODO monitor class that writes delegate states mas states to file
-
+    // Logger for the delegate mas actions
+    private Monitor monitor;
 
 
     protected Drone(VehicleDTO _dto, EnergyDTO _battery, Range speedRange) {
@@ -52,7 +52,11 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
         explorationAnts = new HashMap<>();
         intentionAnt = new HashMap<>();
         state = delegateMasState.initialState;
+        monitor = new Monitor(this.getDroneString()); // TODO where are these files generated
     }
+
+    public int getID(){return this.ID;}
+
 
     @Override
     public void initEnergyUser(EnergyModel model) {
@@ -125,6 +129,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
                 }
             case spawnExplorationAnts:
                 // TODO when reconsideration is needed continuously resend exploration ants
+                // TODO write consideration to logging file
                 break;
 
         }
@@ -161,10 +166,16 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
             return;
         }
 
+        // Log the intention ant and merit calculation in the log file
+        String description = " Best merit: " + bestMerit + ".\n";
+        description += "Intention ant is sent to order (" + bestOrder.getOrderDescription() +").\n";
+//        System.out.println(description);
+
+        monitor.writeToFile(timeLapse.getStartTime(), description);
+
         IntentionAnt ant = new IntentionAnt(this, bestOrder);
         intentionAnt.put(ant, false);
         bestOrder.receiveAnt(ant);
-
     }
 
     /**

@@ -81,7 +81,7 @@ public class DroneRenderer extends CanvasRenderer.AbstractCanvasRenderer {
     }
 
     private void renderDrone(RoadUser user, GC gc, ViewPort vp, int xpx, int ypx, int r){
-        // TODO put this code in a separate function to avoid code duplication
+        // TODO render the drone ID on the UI!
         Drone d = (Drone) user;
         final PDPModel.VehicleState vs = pdpModel.getVehicleState(d);
         String text = determineStatus(d, vs);
@@ -92,6 +92,15 @@ public class DroneRenderer extends CanvasRenderer.AbstractCanvasRenderer {
         gc.drawOval(
                 xpx - vp.scale(r), ypx - vp.scale(r),
                 2 * vp.scale(r), 2 * vp.scale(r));
+        String droneInfo = Integer.toString(d.getID());
+        final org.eclipse.swt.graphics.Point nameExtent = gc.textExtent(droneInfo);
+        gc.setBackground(gc.getDevice().getSystemColor(SWT.COLOR_BLACK));
+        gc.fillRoundRectangle(xpx + offsetX - nameExtent.x / 2, ypx - 20 - nameExtent.y / 2,
+                nameExtent.x + 2, nameExtent.y + 2, 5,
+                5);
+        gc.setForeground(gc.getDevice().getSystemColor(SWT.COLOR_WHITE));
+        gc.drawText(droneInfo, xpx + offsetX - nameExtent.x / 2 + 1, ypx - 20 - nameExtent.y / 2 + 1,
+                true);
         if (text != null) {
             final org.eclipse.swt.graphics.Point extent = gc.textExtent(text);
             gc.setBackground(gc.getDevice().getSystemColor(SWT.COLOR_BLACK));

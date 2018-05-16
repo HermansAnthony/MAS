@@ -75,4 +75,7 @@ public class Order extends Parcel implements TickListener {
     @Override
     public void afterTick(TimeLapse timeLapse) {}
 
+    public String getOrderDescription(){
+        return "location: " + this.getRoadModel().getPosition(this) + ", payload: " + this.getNeededCapacity() + " grams";
+    }
 }
