@@ -11,13 +11,14 @@ import com.github.rinde.rinsim.core.model.energy.EnergyUser;
 import com.github.rinde.rinsim.core.model.road.RoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadUser;
 import com.github.rinde.rinsim.core.model.time.TimeLapse;
-import com.github.rinde.rinsim.geom.Point;
 import com.google.common.base.Optional;
 import com.google.common.base.Stopwatch;
+import util.BatteryCalculations;
 import util.Range;
 
 import javax.measure.unit.SI;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
@@ -65,6 +66,11 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
         // If the drone is carrying payload, adjust the ratio at which speed it moves
         double ratio = currentContentsSize == 0 ? 1 : 1 - (currentContentsSize / getCapacity());
         return SPEED_RANGE.getSpeed(ratio);
+    }
+
+    public double getSpeed(double capacity) {
+        assert capacity <= getCapacity();
+        return SPEED_RANGE.getSpeed(capacity / getCapacity());
     }
 
     @Override
@@ -122,17 +128,6 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
                 break;
 
         }
-//        if (explorationAnts.isEmpty()) {
-//            spawnExplorationAnts();
-//        } else {
-//            // TODO check if intention ant has returned and reservation has succeeded
-//            // TODO send exploration ants continually
-//            // Check if all the exploration ants have returned yet
-//            if (!explorationAnts.values().contains(false)) {
-//                spawnIntentionAnt(timeLapse);
-//            }
-//
-//        }
     }
 
     private void spawnIntentionAnt(TimeLapse timeLapse) {
@@ -167,41 +162,62 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
         }
 
         IntentionAnt ant = new IntentionAnt(this, bestOrder);
-        intentionAnt.put(ant, false); // TODO maybe just use one boolean and not a tuple
+        intentionAnt.put(ant, false);
         bestOrder.receiveAnt(ant);
 
     }
 
+    /**
+     * Returns the merit for a certain order. Orders with higher merit are more beneficial to drones than order with low merit.
+     * @param order The order for which the merit is calculated.
+     * @param timeLapse The time at which this is calculated.
+     * @return The merit associated with the specific order.
+     */
     private double determineBenefits(Order order, TimeLapse timeLapse) {
         double merit = 0;
 
-        // TODO battery usage per meter for more accurate results
-        double batteryPercentage = this.battery.getBatteryLevel() / this.battery.getMaxCapacity();
-        if (batteryPercentage < 0.2) {
+        RoadModel rm = getRoadModel();
+        EnergyModel em = getEnergyModel();
+
+
+        // Determine the total battery capacity that will be used for this specific order if it is chosen.
+        // If the usage exceeds the current battery capacity, return -1 to make sure this order is not chosen.
+        // Otherwise, choose orders in favour of using as much of the remaining battery capacity as possible.
+        double distancePickup = rm.getDistanceOfPath(rm.getShortestPathTo(rm.getPosition(this), order.getPickupLocation())).doubleValue(SI.METER);
+        double distanceDeliver = rm.getDistanceOfPath(rm.getShortestPathTo(order.getPickupLocation(), order.getDeliveryLocation())).doubleValue(SI.METER);
+        double distanceCharge = rm.getDistanceOfPath(rm.getShortestPathTo(order.getDeliveryLocation(), em.getChargingPoint().getLocation())).doubleValue(SI.METER);
+        double neededBatteryLevel = BatteryCalculations.calculateNecessaryBatteryLevel(
+            this, distancePickup, distanceDeliver, distanceCharge, order.getNeededCapacity());
+        if (neededBatteryLevel > this.battery.getBatteryLevel()) {
             return -1;
         }
-        merit += batteryPercentage * 100;
 
-        double percentageTimeLeft = (order.getDeliveryTimeWindow().end() - timeLapse.getTime()) /
-                (order.getDeliveryTimeWindow().end() - order.getOrderAnnounceTime());
+        merit += (neededBatteryLevel / this.battery.getBatteryLevel()) * 100;
+
+
+        // Favour the orders which are closer to their specific deadline.
+        double timeLeft = order.getDeliveryTimeWindow().end() - timeLapse.getTime();
+        double totalTimeOrder = order.getDeliveryTimeWindow().end() - order.getOrderAnnounceTime();
+        double percentageTimeLeft = timeLeft / totalTimeOrder;
         merit += (1 - percentageTimeLeft) * 100;
 
         // TODO same as above, for chargingPoint calculations
-        merit += getEnergyModel().getChargingPoint().chargersOccupied(this) ? 50 : 0;
+        merit += em.getChargingPoint().chargersOccupied(this) ? 50 : 0;
 
 
-        List<Point> path =
-            new ArrayList<>(Arrays.asList(getRoadModel().getPosition(this), order.getPickupLocation(), order.getDeliveryLocation()));
-        double travelDistance = getRoadModel().getDistanceOfPath(path).doubleValue(SI.METER);
-        double travelCapacity = getTravelCapacity();
-
-        merit += (travelDistance / travelCapacity) * 100;
+        // Favour the orders which use up most of the drone's current travel capacity.
+        double travelDistance = distancePickup + distanceDeliver + distanceCharge;
+        merit += (travelDistance / getTravelCapacity()) * 100;
 
         return merit;
     }
 
+    /**
+     * Gets the maximum distance a drone could travel if flying at max speed.
+     * @return The calculated distance.
+     */
     protected double getTravelCapacity() {
-        return SPEED_RANGE.getSpeed(0) * battery.getMaxCapacity();
+        return SPEED_RANGE.getSpeed(1) * battery.getMaxCapacity();
     }
 
     private void spawnExplorationAnts() {

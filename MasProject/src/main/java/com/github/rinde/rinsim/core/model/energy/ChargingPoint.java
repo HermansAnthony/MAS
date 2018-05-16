@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 // TODO could maybe provide templates here
+// TODO maybe change both lists with a map<Class<?>, list<Charger>>  -> use list wrapper (array.asList or similar thing) to provide fixed size
 public class ChargingPoint implements RoadUser, EnergyUser {
     private Point location;
 

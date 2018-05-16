@@ -8,10 +8,10 @@ import util.Range;
 
 public class DroneLW  extends Drone {
 
-    public DroneLW(Range speedRange, int capacity, int batteryLevel) {
+    public DroneLW(Range speedRange, int capacity, int batteryLevel, Point chargingLocation) {
         super(VehicleDTO.builder()
             .capacity(capacity)
-            .startPosition(new Point(50,50))
+            .startPosition(chargingLocation)
             .speed(speedRange.getSpeed(1))
             .build(),
             new EnergyDTO(batteryLevel), speedRange);

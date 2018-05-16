@@ -53,6 +53,8 @@ public class DroneExample {
     private static final int serviceDuration = 60000;
     private static final int maxCapacity = 9000;
 
+    private static final Point chargingPointLocation = new Point(2500,2500);
+
     private static List<Point> storeLocations;
     private static Point resolution;
 
@@ -89,17 +91,17 @@ public class DroneExample {
      */
     public static Simulator run(boolean testing, final long endTime) {
         final View.Builder view = createGui(testing);
-
         // use map of leuven
         final Simulator simulator = Simulator.builder()
             .addModel(TimeModel.builder().withTickLength(250))
             .addModel(RoadModelBuilders.plane()
 //                .withObjectRadius(droneRadius)
                 .withMinPoint(new Point(0,0))
-                .withMaxPoint(resolution)
+                .withMaxPoint(new Point(5000,5000))
+//                .withMaxPoint(resolution)
                 .withDistanceUnit(SI.METER)
                 .withSpeedUnit(SI.METERS_PER_SECOND)
-                .withMaxSpeed(1000))
+                .withMaxSpeed(50))
             .addModel(DefaultEnergyModel.builder())
             .addModel(DefaultPDPModel.builder()) // TODO possibly define our own PDP model, extended from the PDP model class
             .addModel(view)
@@ -107,16 +109,17 @@ public class DroneExample {
         final RandomGenerator rng = simulator.getRandomGenerator();
         final PlaneRoadModel planeRoadModel = simulator.getModelProvider().getModel(PlaneRoadModel.class);
 
-        simulator.register(new ChargingPoint(new Point(560,478), amountChargersLW, amountChargersHW));
+
+        simulator.register(new ChargingPoint(chargingPointLocation, amountChargersLW, amountChargersHW));
 
         for (Point storeLocation : storeLocations) {
             simulator.register(new Store(storeLocation));
         }
         for (int i = 0; i < 1; i++) {
-            simulator.register(new DroneLW(speedDroneLW, capacityDroneLW, batteryDroneLW));
+            simulator.register(new DroneLW(speedDroneLW, capacityDroneLW, batteryDroneLW, chargingPointLocation));
         }
         for (int i = 0; i < 1; i++) {
-            simulator.register(new DroneHW(speedDroneHW, capacityDroneHW, batteryDroneHW));
+            simulator.register(new DroneHW(speedDroneHW, capacityDroneHW, batteryDroneHW, chargingPointLocation));
         }
 
         simulator.addTickListener(new TickListener() {
