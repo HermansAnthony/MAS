@@ -22,7 +22,6 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
-
     private final Range SPEED_RANGE;
     private Optional<Parcel> payload;
 
@@ -35,6 +34,9 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
     private delegateMasState state;
     private Map<ExplorationAnt, Boolean> explorationAnts;
     private Map<IntentionAnt, Boolean> intentionAnt; // Just one intention ant
+
+    // TODO monitor class that writes delegate states mas states to file
+
 
 
     protected Drone(VehicleDTO _dto, EnergyDTO _battery, Range speedRange) {
