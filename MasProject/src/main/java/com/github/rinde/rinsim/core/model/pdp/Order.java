@@ -31,14 +31,15 @@ public class Order extends Parcel implements TickListener {
     @Override
     public void initRoadPDP(RoadModel pRoadModel, PDPModel pPdpModel) {}
 
-    public void sendAnt(ExplorationAnt explorationAnt) {
+    public void receiveAnt(ExplorationAnt explorationAnt) {
         explorationAnt.setParcelInformation(this);
         synchronized(temporaryAnts) {
             temporaryAnts.add(explorationAnt);
         }
     }
 
-    synchronized public void sendAnt(IntentionAnt intentionAnt) {
+    //
+    synchronized public void receiveAnt(IntentionAnt intentionAnt) {
         if (!this.isReserved()) {
             this.reserve(intentionAnt.getPrimaryAgent());
             intentionAnt.reservationApproved = true;

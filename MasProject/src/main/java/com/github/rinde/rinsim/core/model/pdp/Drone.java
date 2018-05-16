@@ -32,8 +32,9 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
     public EnergyDTO battery;
 
     // Delegate MAS stuff
+    private delegateMasState state;
     private Map<ExplorationAnt, Boolean> explorationAnts;
-    private Map<IntentionAnt, Tuple<Boolean, Boolean>> intentionAnt;
+    private Map<IntentionAnt, Boolean> intentionAnt; // Just one intention ant
 
 
     protected Drone(VehicleDTO _dto, EnergyDTO _battery, Range speedRange) {
@@ -45,6 +46,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
         energyModel = Optional.absent();
         explorationAnts = new HashMap<>();
         intentionAnt = new HashMap<>();
+        state = delegateMasState.initialState;
     }
 
     @Override
@@ -84,16 +86,49 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
     }
 
     private void delegateMAS(TimeLapse timeLapse) {
-        if (explorationAnts.isEmpty()) {
-            spawnExplorationAnts();
-        } else {
-            // TODO check if intention ant has returned and reservation has succeeded
-            // TODO send exploration ants continually
-            // Check if all the exploration ants have returned yet
-            if (!explorationAnts.values().contains(false)) {
-                spawnIntentionAnt(timeLapse);
-            }
+        switch (state){
+            case initialState:
+                spawnExplorationAnts();
+                state = delegateMasState.explorationAntsReturned;
+                break;
+            case explorationAntsReturned:
+                if (!explorationAnts.values().contains(false)) {
+                    spawnIntentionAnt(timeLapse);
+                    state = delegateMasState.intentionAntReturned;
+                }
+                break;
+            case intentionAntReturned:
+                if (intentionAnt.isEmpty()){
+                    state = delegateMasState.initialState;
+                    break;
+                }
+                Map.Entry<IntentionAnt, Boolean> entry = intentionAnt.entrySet().iterator().next();
+                // Ant has returned and has an approved reservation
+                if (entry.getValue() && entry.getKey().reservationApproved){
+                    if(!payload.isPresent()){
+                        System.out.println("Payload is filled by the intention ant");
+                        payload = Optional.of(entry.getKey().reservedOrder);
+                    }
+                    entry.setValue(false); // Intention ant needs to go away again
+                    entry.getKey().reservationApproved = false;
+                    entry.getKey().reservedOrder.receiveAnt(entry.getKey()); // TODO For now no reconsideration whatsoever
+                }
+            case spawnExplorationAnts:
+                // TODO when reconsideration is needed continuously resend exploration ants
+                break;
+
         }
+//        if (explorationAnts.isEmpty()) {
+//            spawnExplorationAnts();
+//        } else {
+//            // TODO check if intention ant has returned and reservation has succeeded
+//            // TODO send exploration ants continually
+//            // Check if all the exploration ants have returned yet
+//            if (!explorationAnts.values().contains(false)) {
+//                spawnIntentionAnt(timeLapse);
+//            }
+//
+//        }
     }
 
     private void spawnIntentionAnt(TimeLapse timeLapse) {
@@ -127,9 +162,9 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
             return;
         }
 
-        IntentionAnt ant = new IntentionAnt(this);
-        intentionAnt.put(ant, new Tuple<>(false, false));
-        bestOrder.sendAnt(ant);
+        IntentionAnt ant = new IntentionAnt(this, bestOrder);
+        intentionAnt.put(ant, false); // TODO maybe just use one boolean and not a tuple
+        bestOrder.receiveAnt(ant);
 
     }
 
@@ -169,13 +204,14 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
         for (Order order : getRoadModel().getObjectsOfType(Order.class)) {
             ExplorationAnt explorationAnt = new ExplorationAnt(this);
             explorationAnts.put(explorationAnt, Boolean.FALSE);
-            order.sendAnt(explorationAnt);
+            order.receiveAnt(explorationAnt);
         }
     }
 
     private void handlePickupAndDelivery(RoadModel rm, PDPModel pdp, TimeLapse timeLapse) {
         if (!payload.isPresent()) {
-            getParcel(pdp);
+            return;
+//            getParcel(pdp);
         } else if (pdp.getContents(this).isEmpty()) {
             moveToStore(rm, pdp, timeLapse);
         } else {
@@ -214,6 +250,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
 
         // If the drone arrived at the customer, deliver the package.
         if (rm.getPosition(this) == order.getDeliveryLocation()) {
+            intentionAnt.clear(); // No more intention ants
             System.out.println("At destination.");
 
             new Thread(new RemoveCustomer(rm, pdp, order.getCustomer())).start();
@@ -255,7 +292,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
             explorationAnts.replace((ExplorationAnt) ant, true);
         } else if (ant instanceof IntentionAnt) {
             IntentionAnt intAnt = (IntentionAnt) ant;
-            intentionAnt.replace(intAnt, new Tuple<>(true, intAnt.reservationApproved));
+            intentionAnt.replace(intAnt, true);
         }
     }
 
@@ -290,5 +327,13 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
         }
     }
 
+    private enum delegateMasState {
+//        TODO explanation
+        initialState,
+        spawnExplorationAnts,
+        explorationAntsReturned,
+        intentionAntReturned;
+
+    }
 
 }
