@@ -15,7 +15,6 @@ import com.github.rinde.rinsim.geom.Point;
 import com.google.common.base.Optional;
 import com.google.common.base.Stopwatch;
 import util.Range;
-import util.Tuple;
 
 import javax.measure.unit.SI;
 import java.util.*;
@@ -23,6 +22,8 @@ import java.util.concurrent.TimeUnit;
 
 public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
 
+    public static int nextID = 0;
+    private int ID;
     private final Range SPEED_RANGE;
     private Optional<Parcel> payload;
 
@@ -39,6 +40,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
 
     protected Drone(VehicleDTO _dto, EnergyDTO _battery, Range speedRange) {
         super(_dto);
+        ID = nextID++;
         SPEED_RANGE = speedRange;
         battery = _battery;
         wantsToCharge = false;
@@ -295,6 +297,8 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
             intentionAnt.replace(intAnt, true);
         }
     }
+
+    public abstract String getDroneString();
 
 
     // TODO find better way of dealing with removal of customers than using threads.
