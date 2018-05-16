@@ -10,6 +10,7 @@ import com.github.rinde.rinsim.core.model.time.TimeLapse;
 import com.github.rinde.rinsim.event.Event;
 
 import javax.annotation.Nonnull;
+import javax.measure.unit.SI;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,8 +34,9 @@ public class DefaultEnergyModel extends EnergyModel {
             final MoveEvent event = (MoveEvent) e;
             Drone drone = (Drone) event.roadUser;
 
+            double tickLength = event.pathProgress.time().doubleValue(SI.MILLI(SI.SECOND));
             // TODO decrease maybe more dynamically.
-            drone.battery.decreaseBatteryLevel(1);
+            drone.battery.decreaseBatteryLevel(tickLength / 1000);
         }, PlaneRoadModel.RoadEventType.MOVE);
     }
 

@@ -77,12 +77,13 @@ public class ChargingPoint implements RoadUser, EnergyUser {
      * @param timeLapse timelapse.
      */
     public void charge(TimeLapse timeLapse) {
-        // TODO charge all the drones a certain amount
+        double tickLength = timeLapse.getTickLength();
+
         for (Drone drone : droneHW) {
-            drone.battery.recharge(1);
+            drone.battery.recharge(tickLength / 1000);
         }
         for (Drone drone : droneLW) {
-            drone.battery.recharge(1);
+            drone.battery.recharge(tickLength / 1000);
         }
     }
 

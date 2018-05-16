@@ -3,25 +3,25 @@ package com.github.rinde.rinsim.core.model.energy;
 import static java.lang.Math.min;
 
 public class EnergyDTO {
-    final int MAX_CAPACITY;
-    int batteryLevel;
+    final double MAX_CAPACITY;
+    double batteryLevel;
 
-    public EnergyDTO(int _batteryLevel) {
+    public EnergyDTO(double _batteryLevel) {
         batteryLevel = _batteryLevel;
         MAX_CAPACITY = batteryLevel;
     }
 
 
-    public int getBatteryLevel() {
+    public double getBatteryLevel() {
         return batteryLevel;
     }
 
-    public void decreaseBatteryLevel(int amount) {
-//        assert(batteryLevel - amount >= 0); TODO uncomment
+    public void decreaseBatteryLevel(double amount) {
+        assert(batteryLevel - amount >= 0);
         batteryLevel -= amount;
     }
 
-    public void recharge(int amount) {
+    public void recharge(double amount) {
         batteryLevel = min(batteryLevel + amount, MAX_CAPACITY);
     }
 
@@ -29,7 +29,7 @@ public class EnergyDTO {
         return MAX_CAPACITY == batteryLevel;
     }
 
-    public int getMaxCapacity() {
+    public double getMaxCapacity() {
         return MAX_CAPACITY;
     }
 }
