@@ -19,4 +19,10 @@ public class DroneHW extends Drone {
     @Override
     public void initRoadPDP(RoadModel roadModel, PDPModel pdpModel) {}
 
+    @Override
+    public String getDroneString() {
+        // TODO fill in
+        return null;
+    }
+
 }
