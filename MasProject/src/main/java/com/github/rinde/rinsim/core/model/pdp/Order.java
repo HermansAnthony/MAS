@@ -16,12 +16,16 @@ public class Order extends Parcel implements TickListener {
     private Customer customer;
     private List<Ant> temporaryAnts;
     private Optional<Vehicle> reserver;
+    private int timeoutTimer;
+
+    private static int TIMEOUT_RESERVE = 20; // TODO fine grain this value
 
     public Order(ParcelDTO parcelDto, Customer _customer) {
         super(parcelDto);
         customer = _customer;
         temporaryAnts = new ArrayList<>();
         reserver = Optional.absent();
+        timeoutTimer = TIMEOUT_RESERVE;
     }
 
     public Customer getCustomer() {
@@ -44,7 +48,12 @@ public class Order extends Parcel implements TickListener {
             this.reserve(intentionAnt.getPrimaryAgent());
             intentionAnt.reservationApproved = true;
         } else {
-            intentionAnt.reservationApproved = reserver.get().equals(intentionAnt.getPrimaryAgent());
+            if (reserver.get().equals(intentionAnt.getPrimaryAgent())) {
+               timeoutTimer = TIMEOUT_RESERVE;
+                intentionAnt.reservationApproved = true;
+            } else {
+                intentionAnt.reservationApproved = false;
+            }
         }
 
         synchronized(temporaryAnts) {
@@ -62,7 +71,6 @@ public class Order extends Parcel implements TickListener {
 
     @Override
     public void tick(TimeLapse timeLapse) {
-        // TODO timeout of reservation
         // Send out all the temporary ants to their respective primary agents.
         synchronized (temporaryAnts) {
             for (Ant ant : temporaryAnts) {
@@ -70,10 +78,19 @@ public class Order extends Parcel implements TickListener {
             }
             temporaryAnts.clear();
         }
+
     }
 
     @Override
-    public void afterTick(TimeLapse timeLapse) {}
+    public void afterTick(TimeLapse timeLapse) {
+        if (reserver.isPresent()) {
+            timeoutTimer--;
+        }
+
+        if (timeoutTimer <= 0) {
+            reserver = Optional.absent();
+        }
+    }
 
     public String getOrderDescription(){
         return "location: " + this.getRoadModel().getPosition(this) + ", payload: " + this.getNeededCapacity() + " grams";
