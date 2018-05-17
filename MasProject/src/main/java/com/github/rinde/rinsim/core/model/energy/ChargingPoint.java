@@ -8,27 +8,17 @@ import com.github.rinde.rinsim.core.model.road.RoadUser;
 import com.github.rinde.rinsim.core.model.time.TimeLapse;
 import com.github.rinde.rinsim.geom.Point;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
-// TODO could maybe provide templates here
-// TODO maybe change both lists with a map<Class<?>, list<Charger>>  -> use list wrapper (array.asList or similar thing) to provide fixed size
 public class ChargingPoint implements RoadUser, EnergyUser {
     private Point location;
-
-    private final int MAX_CAPACITY_LW;
-    private final int MAX_CAPACITY_HW;
-
-    private List<DroneLW> droneLW;
-    private List<DroneHW> droneHW;
-
+    private Map<Class<?>, List<Drone>> chargers;
 
     public ChargingPoint(Point loc, int maxCapacityLW, int maxCapacityHW) {
         location = loc;
-        MAX_CAPACITY_HW = maxCapacityHW;
-        MAX_CAPACITY_LW = maxCapacityLW;
-        droneHW = new ArrayList<>();
-        droneLW = new ArrayList<>();
+        chargers = new HashMap<>();
+        chargers.put(DroneLW.class, Arrays.asList(new Drone[maxCapacityLW]));
+        chargers.put(DroneHW.class, Arrays.asList(new Drone[maxCapacityHW]));
     }
 
     @Override
@@ -37,37 +27,25 @@ public class ChargingPoint implements RoadUser, EnergyUser {
     }
 
     public void chargeDrone(Drone drone) {
-        if (drone instanceof DroneLW) {
-            assert(droneLW.size() <= MAX_CAPACITY_LW);
-            droneLW.add((DroneLW) drone);
-        } else if (drone instanceof DroneHW) {
-            assert(droneHW.size() <= MAX_CAPACITY_HW);
-            droneHW.add((DroneHW) drone);
+        assert(!this.chargersOccupied(drone.getClass()));
+        List<Drone> drones = chargers.get(drone.getClass());
+        for (int i = 0; i < drones.size(); i++) {
+            if (drones.get(i) == null) {
+                drones.set(i, drone);
+            }
         }
     }
 
-    // TODO remove this -> provide better alternative
     public boolean chargersOccupied(Drone drone) {
-        if (drone instanceof DroneLW) {
-            return droneLW.size() == MAX_CAPACITY_LW;
-        } else if (drone instanceof DroneHW) {
-            return droneHW.size() == MAX_CAPACITY_HW;
-        }
-        return false;
+        return chargersOccupied(drone.getClass());
     }
 
-    // TODO remove this -> provide better alternative
     public boolean chargersOccupied(Class droneClass) {
-        if (droneClass == DroneLW.class) {
-            return droneLW.size() == MAX_CAPACITY_LW;
-        } else if (droneClass == DroneHW.class) {
-            return droneHW.size() == MAX_CAPACITY_HW;
-        }
-        return false;
+        return !chargers.get(droneClass).contains(null);
     }
 
     public boolean dronePresent(Drone drone) {
-        return droneHW.contains(drone) || droneLW.contains(drone);
+        return chargers.get(drone.getClass()).contains(drone);
     }
 
 
@@ -79,41 +57,34 @@ public class ChargingPoint implements RoadUser, EnergyUser {
     public void charge(TimeLapse timeLapse) {
         double tickLength = timeLapse.getTickLength();
 
-        for (Drone drone : droneHW) {
-            drone.battery.recharge(tickLength / 1000);
-        }
-        for (Drone drone : droneLW) {
-            drone.battery.recharge(tickLength / 1000);
+        for (List<Drone> drones : chargers.values()) {
+            drones.forEach(o -> {
+                if (o != null)
+                    o.battery.recharge(tickLength / 1000);
+            });
         }
     }
 
     public List<Drone> redeployChargedDrones() {
-        List<Drone> drones = new ArrayList<>();
+        List<Drone> redeployableDrones = new ArrayList<>();
 
-        for (int i = 0; i < droneHW.size(); i++) {
-            Drone drone = droneHW.get(i);
-            if (drone.battery.fullyCharged()) {
-                drones.add(drone);
-                droneHW.remove(drone);
-                i--;
+        for (List<Drone> drones : chargers.values()) {
+            for (int i = 0; i < drones.size(); i++) {
+                if (drones.get(i) != null) {
+                    if (drones.get(i).battery.fullyCharged()) {
+                        redeployableDrones.add(drones.get(i));
+                        drones.set(i, null);
+                    }
+                }
             }
         }
-        for (int i = 0; i < droneLW.size(); i++) {
-            Drone drone = droneLW.get(i);
-            if (drone.battery.fullyCharged()) {
-                drones.add(drone);
-                droneLW.remove(drone);
-                i--;
-            }
-        }
-
-        return drones;
+        return redeployableDrones;
     }
 
     public String getStatus() {
         String status = "The current occupation of the charging point is: \n";
-        status += droneLW.size() + " lightweight drones are charging\n";
-        status += droneHW.size() + " heavyweight drones are charging";
+        status += chargers.get(DroneLW.class).stream().filter(o -> o != null).count() + " lightweight drones are charging\n";
+        status += chargers.get(DroneHW.class).stream().filter(o -> o != null).count() + " heavyweight drones are charging";
         return status;
     }
 
