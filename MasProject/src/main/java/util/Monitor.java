@@ -2,15 +2,20 @@ package util;
 
 import java.io.*;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.concurrent.TimeUnit;
 
 public class Monitor {
     private String fileName;
+    private static String outputDirectory = "logging";
     private static SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm:ss");
 
     public Monitor(String _fileName){
-        fileName = _fileName + ".txt";
+
+        File directory = new File(outputDirectory);
+        if (! directory.exists()){
+            directory.mkdir();
+        }
+
+        fileName = outputDirectory + "/" +  _fileName + ".txt";
         // Delete the file if it is already present
         File tempFile = new File(fileName);
         if (tempFile.isFile()){

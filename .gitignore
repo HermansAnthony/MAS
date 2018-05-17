@@ -82,3 +82,6 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
+
+# Logging files for the simulator
+logging/
