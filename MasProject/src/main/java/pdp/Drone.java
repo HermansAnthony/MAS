@@ -8,18 +8,19 @@ import com.github.rinde.rinsim.core.model.pdp.PDPModel;
 import com.github.rinde.rinsim.core.model.pdp.Parcel;
 import com.github.rinde.rinsim.core.model.pdp.Vehicle;
 import com.github.rinde.rinsim.core.model.pdp.VehicleDTO;
-import energy.ChargingPoint;
-import energy.EnergyDTO;
-import energy.EnergyModel;
-import energy.EnergyUser;
 import com.github.rinde.rinsim.core.model.road.RoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadUser;
 import com.github.rinde.rinsim.core.model.time.TimeLapse;
 import com.google.common.base.Optional;
 import com.google.common.base.Stopwatch;
+import energy.ChargingPoint;
+import energy.EnergyDTO;
+import energy.EnergyModel;
+import energy.EnergyUser;
 import util.BatteryCalculations;
 import util.Monitor;
 import util.Range;
+
 import javax.measure.unit.SI;
 import java.util.HashMap;
 import java.util.Map;
@@ -37,6 +38,15 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
     public EnergyDTO battery;
 
     // Delegate MAS stuff
+    /* TODO: timeout for ant receiving -> imagine ant being sent out just at the end of the lifespan of a certain order
+       TODO:                           -> the order gets delivered and the intention ant never returns
+       TODO:                           -> this may break the system since it keeps waiting for the end to return.
+
+       NOTE: not entirely sure about the above remark, maybe the order lives long enough for that situation to possibly happen.
+
+       TODO: (possible) alternative    -> filter out orders which are currently in transit
+     */
+
     private delegateMasState state;
     private Map<ExplorationAnt, Boolean> explorationAnts;
     private Map<IntentionAnt, Boolean> intentionAnt; // Just one intention ant
@@ -108,7 +118,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
 
     private void delegateMAS(TimeLapse timeLapse) {
         switch (state){
-            case initialState:
+            case initialState: {
                 // Initially, spawn exploration ants to get information about all possible orders.
                 explorationAnts.clear();
                 intentionAnt.clear();
@@ -119,7 +129,8 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
                     state = delegateMasState.explorationAntsReturned;
                 }
                 break;
-            case explorationAntsReturned:
+            }
+            case explorationAntsReturned: {
                 // Check if all exploration ants have returned
                 if (!explorationAnts.values().contains(false)) {
                     // Send out an intention ant to the order with the highest merit
@@ -135,33 +146,63 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
                     state = delegateMasState.intentionAntReturned;
                 }
                 break;
-            case intentionAntReturned:
+            }
+            case intentionAntReturned: {
                 // If the intentionAnt has been cleared, the order has been delivered,
                 // and we need to start looking for a new one.
-                if (intentionAnt.isEmpty()){
+                if (intentionAnt.isEmpty()) {
                     state = delegateMasState.initialState;
                     break;
                 }
 
                 Map.Entry<IntentionAnt, Boolean> entry = intentionAnt.entrySet().iterator().next();
                 // Ant has returned and has an approved reservation
-                if (entry.getValue() && entry.getKey().reservationApproved){
-                    if(!payload.isPresent()){
-                        payload = Optional.of(entry.getKey().reservedOrder);
-                    }
-                    entry.setValue(false); // Intention ant needs to go away again
-                    entry.getKey().reservationApproved = false;
-                    entry.getKey().reservedOrder.receiveAnt(entry.getKey()); // TODO For now no reconsideration whatsoever
+                if (entry.getValue() && entry.getKey().reservationApproved) {
+                    payload = Optional.of(entry.getKey().reservedOrder);
+
+                    // Intention ant needs to be sent out again to hold the reservation
+                    state = delegateMasState.continueReservation;
                 } else if (entry.getValue() && !entry.getKey().reservationApproved) {
                     // The order has been reserved for another package, resend exploration ants and find a new order.
                     state = delegateMasState.initialState;
                 }
                 break;
-            case spawnExplorationAnts:
-                // TODO when reconsideration is needed continuously resend exploration ants
-                // TODO write consideration to logging file
-                break;
+            }
+            case continueReservation: {
+                Map.Entry<IntentionAnt, Boolean> entry = intentionAnt.entrySet().iterator().next();
 
+                if (!payload.isPresent()) {
+                    // The order has been delivered, go back to the initial state
+                    state = delegateMasState.initialState;
+                    break;
+                }
+
+                if (entry.getValue()) {
+                    // If the intention ant has returned, resend it
+                    entry.setValue(false); // Mark the ant as gone
+                    entry.getKey().reservationApproved = false;
+                    entry.getKey().reservedOrder.receiveAnt(entry.getKey());
+                }
+
+                state = delegateMasState.spawnExplorationAnts;
+                break;
+            }
+            case spawnExplorationAnts: {
+                if (explorationAnts.isEmpty()) {
+                    // Spawn new exploration ants for possible reconsiderations
+                    spawnExplorationAnts();
+                } else if (!explorationAnts.containsValue(false)) {
+                    // Check for reconsiderations
+
+                    // TODO write consideration to logging file
+                    // TODO: plug reconsideration function in here.
+                    explorationAnts.clear();
+                }
+
+
+                state = delegateMasState.continueReservation;
+                break;
+            }
         }
     }
 
@@ -268,22 +309,21 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
     private void handlePickupAndDelivery(RoadModel rm, PDPModel pdp, TimeLapse timeLapse) {
         if (!payload.isPresent()) {
             return;
-//            getParcel(pdp);
         } else if (pdp.getContents(this).isEmpty()) {
             moveToStore(rm, pdp, timeLapse);
         } else {
             moveToCustomer(rm, pdp, timeLapse);
         }
     }
-
-    private void getParcel(PDPModel pdp) {
-        for (Parcel parcel : pdp.getParcels(PDPModel.ParcelState.AVAILABLE)) {
-            if (parcel.getNeededCapacity() <= this.getCapacity()) {
-                payload = Optional.of(parcel);
-                System.out.println("Moving to store...");
-            }
-        }
-    }
+//
+//    private void getParcel(PDPModel pdp) {
+//        for (Parcel parcel : pdp.getParcels(PDPModel.ParcelState.AVAILABLE)) {
+//            if (parcel.getNeededCapacity() <= this.getCapacity()) {
+//                payload = Optional.of(parcel);
+//                System.out.println("Moving to store...");
+//            }
+//        }
+//    }
 
     private void moveToStore(RoadModel rm, PDPModel pdp, TimeLapse timeLapse) {
         rm.moveTo(this, payload.get().getPickupLocation(), timeLapse);
@@ -307,7 +347,6 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
 
         // If the drone arrived at the customer, deliver the package.
         if (rm.getPosition(this) == order.getDeliveryLocation()) {
-            intentionAnt.clear(); // No more intention ants
             System.out.println("At destination.");
 
             new Thread(new RemoveCustomer(rm, pdp, order.getCustomer())).start();
@@ -346,10 +385,20 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
 
     public void receiveAnt(Ant ant) {
         if (ant instanceof ExplorationAnt) {
-            explorationAnts.replace((ExplorationAnt) ant, true);
+
+            // Note: It may happen that some ants which have been sent out are not needed anymore by the drone.
+            //       In that case, the ant is dropped.
+            try {
+                explorationAnts.replace((ExplorationAnt) ant, true);
+            } catch (Exception e) {
+                System.out.println("Exploration and dropped.");
+            }
         } else if (ant instanceof IntentionAnt) {
-            IntentionAnt intAnt = (IntentionAnt) ant;
-            intentionAnt.replace(intAnt, true);
+            try {
+                intentionAnt.replace((IntentionAnt) ant, true);
+            } catch (Exception e) {
+                System.out.println("Intention ant dropped.");
+            }
         }
     }
 
@@ -375,7 +424,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
         public void run() {
             while (pdp.getVehicleState(Drone.this) == PDPModel.VehicleState.DELIVERING) {
                 // Timeout of 30 seconds in order to kill thread if necessary.
-                if (stopwatch.elapsed(TimeUnit.SECONDS) > 30) {
+                if (stopwatch.elapsed(TimeUnit.SECONDS) > 10) {
                     return;
                 }
             }
@@ -390,8 +439,9 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
 //        TODO explanation
         initialState,
         spawnExplorationAnts,
+        intentionAntReturned,
         explorationAntsReturned,
-        intentionAntReturned;
+        continueReservation;
 
     }
 
