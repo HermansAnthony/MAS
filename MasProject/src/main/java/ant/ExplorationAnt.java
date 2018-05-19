@@ -1,6 +1,6 @@
-package com.github.rinde.rinsim.core.model.ant;
+package ant;
 
-import com.github.rinde.rinsim.core.model.pdp.Drone;
+import pdp.Drone;
 
 public class ExplorationAnt extends Ant {
     public ExplorationAnt(Drone drone) {

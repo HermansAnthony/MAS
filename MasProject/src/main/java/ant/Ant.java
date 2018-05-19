@@ -1,6 +1,6 @@
-package com.github.rinde.rinsim.core.model.ant;
+package ant;
 
-import com.github.rinde.rinsim.core.model.pdp.Drone;
+import pdp.Drone;
 import com.github.rinde.rinsim.core.model.pdp.Parcel;
 
 public abstract class Ant {

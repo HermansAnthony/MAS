@@ -1,8 +1,12 @@
-package com.github.rinde.rinsim.core.model.pdp;
+package pdp;
 
-import com.github.rinde.rinsim.core.model.ant.Ant;
-import com.github.rinde.rinsim.core.model.ant.ExplorationAnt;
-import com.github.rinde.rinsim.core.model.ant.IntentionAnt;
+import ant.Ant;
+import ant.ExplorationAnt;
+import ant.IntentionAnt;
+import com.github.rinde.rinsim.core.model.pdp.PDPModel;
+import com.github.rinde.rinsim.core.model.pdp.Parcel;
+import com.github.rinde.rinsim.core.model.pdp.ParcelDTO;
+import com.github.rinde.rinsim.core.model.pdp.Vehicle;
 import com.github.rinde.rinsim.core.model.road.RoadModel;
 import com.github.rinde.rinsim.core.model.time.TickListener;
 import com.github.rinde.rinsim.core.model.time.TimeLapse;

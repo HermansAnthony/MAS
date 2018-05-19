@@ -1,4 +1,4 @@
-package com.github.rinde.rinsim.core.model.ant;
+package ant;
 
 public interface AntReceiver {
     public void receiveAnt(Ant ant);

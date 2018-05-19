@@ -1,13 +1,17 @@
-package com.github.rinde.rinsim.core.model.pdp;
+package pdp;
 
-import com.github.rinde.rinsim.core.model.ant.Ant;
-import com.github.rinde.rinsim.core.model.ant.AntReceiver;
-import com.github.rinde.rinsim.core.model.ant.ExplorationAnt;
-import com.github.rinde.rinsim.core.model.ant.IntentionAnt;
-import com.github.rinde.rinsim.core.model.energy.ChargingPoint;
-import com.github.rinde.rinsim.core.model.energy.EnergyDTO;
-import com.github.rinde.rinsim.core.model.energy.EnergyModel;
-import com.github.rinde.rinsim.core.model.energy.EnergyUser;
+import ant.Ant;
+import ant.AntReceiver;
+import ant.ExplorationAnt;
+import ant.IntentionAnt;
+import com.github.rinde.rinsim.core.model.pdp.PDPModel;
+import com.github.rinde.rinsim.core.model.pdp.Parcel;
+import com.github.rinde.rinsim.core.model.pdp.Vehicle;
+import com.github.rinde.rinsim.core.model.pdp.VehicleDTO;
+import energy.ChargingPoint;
+import energy.EnergyDTO;
+import energy.EnergyModel;
+import energy.EnergyUser;
 import com.github.rinde.rinsim.core.model.road.RoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadUser;
 import com.github.rinde.rinsim.core.model.time.TimeLapse;

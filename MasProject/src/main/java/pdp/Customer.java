@@ -1,4 +1,4 @@
-package com.github.rinde.rinsim.core.model.pdp;
+package pdp;
 
 import com.github.rinde.rinsim.core.model.road.RoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadUser;

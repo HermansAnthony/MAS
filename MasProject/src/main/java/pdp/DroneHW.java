@@ -1,6 +1,8 @@
-package com.github.rinde.rinsim.core.model.pdp;
+package pdp;
 
-import com.github.rinde.rinsim.core.model.energy.EnergyDTO;
+import com.github.rinde.rinsim.core.model.pdp.PDPModel;
+import com.github.rinde.rinsim.core.model.pdp.VehicleDTO;
+import energy.EnergyDTO;
 import com.github.rinde.rinsim.core.model.road.RoadModel;
 import com.github.rinde.rinsim.geom.Point;
 import util.Range;

@@ -1,5 +1,6 @@
-package com.github.rinde.rinsim.core.model.pdp;
+package pdp;
 
+import com.github.rinde.rinsim.core.model.pdp.*;
 import com.github.rinde.rinsim.core.model.time.TimeLapse;
 import com.github.rinde.rinsim.event.EventAPI;
 import com.google.common.collect.ImmutableSet;
@@ -7,7 +8,7 @@ import com.google.common.collect.ImmutableSet;
 import java.util.Collection;
 import java.util.Set;
 
-public class DronePDPModel extends PDPModel{
+public class DronePDPModel extends PDPModel {
 
     @Override
     protected void continuePreviousActions(Vehicle vehicle, TimeLapse time) {

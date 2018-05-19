@@ -1,8 +1,8 @@
-package com.github.rinde.rinsim.core.model.energy;
+package energy;
 
-import com.github.rinde.rinsim.core.model.pdp.Drone;
-import com.github.rinde.rinsim.core.model.pdp.DroneHW;
-import com.github.rinde.rinsim.core.model.pdp.DroneLW;
+import pdp.Drone;
+import pdp.DroneHW;
+import pdp.DroneLW;
 import com.github.rinde.rinsim.core.model.road.RoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadUser;
 import com.github.rinde.rinsim.core.model.time.TimeLapse;

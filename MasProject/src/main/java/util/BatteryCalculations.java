@@ -1,6 +1,6 @@
 package util;
 
-import com.github.rinde.rinsim.core.model.pdp.Drone;
+import pdp.Drone;
 
 public class BatteryCalculations {
 

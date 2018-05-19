@@ -1,7 +1,7 @@
-package com.github.rinde.rinsim.core.model.ant;
+package ant;
 
-import com.github.rinde.rinsim.core.model.pdp.Drone;
-import com.github.rinde.rinsim.core.model.pdp.Order;
+import pdp.Drone;
+import pdp.Order;
 
 public class IntentionAnt extends Ant {
 

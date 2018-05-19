@@ -1,6 +1,6 @@
 import com.github.rinde.rinsim.core.Simulator;
-import com.github.rinde.rinsim.core.model.energy.ChargingPoint;
-import com.github.rinde.rinsim.core.model.energy.DefaultEnergyModel;
+import energy.ChargingPoint;
+import energy.DefaultEnergyModel;
 import com.github.rinde.rinsim.core.model.pdp.*;
 import com.github.rinde.rinsim.core.model.road.PlaneRoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadModelBuilders;
@@ -13,6 +13,10 @@ import com.github.rinde.rinsim.ui.renderers.PlaneRoadModelRenderer;
 import com.github.rinde.rinsim.ui.renderers.RoadUserRenderer;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.jetbrains.annotations.NotNull;
+import pdp.Customer;
+import pdp.DroneHW;
+import pdp.DroneLW;
+import pdp.Order;
 import util.Range;
 
 import javax.annotation.Nullable;
@@ -131,11 +135,11 @@ public class DroneExample {
                     simulator.register(customer);
                     int randomStore = rng.nextInt(storeLocations.size());
                     ParcelDTO orderData = Parcel.builder(storeLocations.get(randomStore),location)
-                            .serviceDuration(serviceDuration)
-                            .neededCapacity(1000 + rng.nextInt(maxCapacity - 1000)) // Capacity is measured in grams
-                            .deliveryDuration(5)
-                            .pickupDuration(5)
-                            .buildDTO();
+                        .serviceDuration(serviceDuration)
+                        .neededCapacity(1000 + rng.nextInt(maxCapacity - 1000)) // Capacity is measured in grams
+                        .deliveryDuration(5)
+                        .pickupDuration(5)
+                        .buildDTO();
                     simulator.register(new Order(orderData, customer));
                 }
             }

@@ -1,4 +1,4 @@
-package com.github.rinde.rinsim.core.model.energy;
+package energy;
 
 public interface EnergyUser {
 
