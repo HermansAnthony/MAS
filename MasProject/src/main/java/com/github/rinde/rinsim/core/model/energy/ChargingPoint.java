@@ -7,6 +7,7 @@ import com.github.rinde.rinsim.core.model.road.RoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadUser;
 import com.github.rinde.rinsim.core.model.time.TimeLapse;
 import com.github.rinde.rinsim.geom.Point;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
@@ -22,7 +23,7 @@ public class ChargingPoint implements RoadUser, EnergyUser {
     }
 
     @Override
-    public void initRoadUser(RoadModel roadModel) {
+    public void initRoadUser(@NotNull RoadModel roadModel) {
         roadModel.addObjectAt(this, location);
     }
 
@@ -40,8 +41,12 @@ public class ChargingPoint implements RoadUser, EnergyUser {
         return chargersOccupied(drone.getClass());
     }
 
-    public boolean chargersOccupied(Class droneClass) {
+    private boolean chargersOccupied(Class droneClass) {
         return !chargers.get(droneClass).contains(null);
+    }
+
+    public double occupationPercentage(Class droneClass) {
+        return chargers.get(droneClass).stream().filter(Objects::nonNull).count() / chargers.get(droneClass).size();
     }
 
     public boolean dronePresent(Drone drone) {
@@ -58,10 +63,7 @@ public class ChargingPoint implements RoadUser, EnergyUser {
         double tickLength = timeLapse.getTickLength();
 
         for (List<Drone> drones : chargers.values()) {
-            drones.forEach(o -> {
-                if (o != null)
-                    o.battery.recharge(tickLength / 1000);
-            });
+            drones.stream().filter(Objects::nonNull).forEach(o -> o.battery.recharge(tickLength / 1000));
         }
     }
 
@@ -83,8 +85,8 @@ public class ChargingPoint implements RoadUser, EnergyUser {
 
     public String getStatus() {
         String status = "The current occupation of the charging point is: \n";
-        status += chargers.get(DroneLW.class).stream().filter(o -> o != null).count() + " lightweight drones are charging\n";
-        status += chargers.get(DroneHW.class).stream().filter(o -> o != null).count() + " heavyweight drones are charging";
+        status += chargers.get(DroneLW.class).stream().filter(Objects::nonNull).count() + " lightweight drones are charging\n";
+        status += chargers.get(DroneHW.class).stream().filter(Objects::nonNull).count() + " heavyweight drones are charging";
         return status;
     }
 

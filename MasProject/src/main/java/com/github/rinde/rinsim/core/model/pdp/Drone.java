@@ -22,8 +22,8 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
-    public static int nextID = 0;
-    protected int ID;
+    private static int nextID = 0;
+    int ID;
     private final Range SPEED_RANGE;
     private Optional<Parcel> payload;
 
@@ -45,14 +45,17 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
         super(_dto);
         ID = nextID++;
         SPEED_RANGE = speedRange;
-        battery = _battery;
-        wantsToCharge = false;
         payload = Optional.absent();
+
         energyModel = Optional.absent();
+        wantsToCharge = false;
+        battery = _battery;
+
+        state = delegateMasState.initialState;
         explorationAnts = new HashMap<>();
         intentionAnt = new HashMap<>();
-        state = delegateMasState.initialState;
-        monitor = new Monitor(this.getDroneString()); // TODO where are these files generated
+
+        monitor = new Monitor(this.getDroneString());
     }
 
     public int getID(){return this.ID;}

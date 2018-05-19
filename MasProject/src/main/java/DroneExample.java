@@ -12,6 +12,7 @@ import com.github.rinde.rinsim.ui.View;
 import com.github.rinde.rinsim.ui.renderers.PlaneRoadModelRenderer;
 import com.github.rinde.rinsim.ui.renderers.RoadUserRenderer;
 import org.apache.commons.math3.random.RandomGenerator;
+import org.jetbrains.annotations.NotNull;
 import util.Range;
 
 import javax.annotation.Nullable;
@@ -33,8 +34,8 @@ public class DroneExample {
     private static final int endTime = 60000;
 
     // LW = light weight, HW = heavy weight
-    private static final int amountDroneLW = 15;
-    private static final int amountDroneHW = 15;
+    private static final int amountDroneLW = 20;
+    private static final int amountDroneHW = 10;
 
     private static final Range speedDroneLW = new Range(17,22);
     private static final Range speedDroneHW = new Range(11,22);
@@ -45,10 +46,10 @@ public class DroneExample {
     private static int batteryDroneLW = 2400;  // Expressed in seconds
     private static int batteryDroneHW = 1500;  // Expressed in seconds
 
-    private static final int droneRadius = 1;
+//    private static final int droneRadius = 1;
     private static final int amountChargersLW = 5;
     private static final int amountChargersHW = 5;
-    private static final int amountRequests = 100;
+//    private static final int amountRequests = 100;
     private static final double orderProbability = 0.005;
     private static final int serviceDuration = 60000;
     private static final int maxCapacity = 9000;
@@ -89,7 +90,7 @@ public class DroneExample {
      * @param endTime   The time at which simulation should stop.
      * @return The simulator instance.
      */
-    public static Simulator run(boolean testing, final long endTime) {
+    private static Simulator run(boolean testing, final long endTime) {
         final View.Builder view = createGui(testing);
         // use map of leuven
         final Simulator simulator = Simulator.builder()
@@ -98,7 +99,6 @@ public class DroneExample {
 //                .withObjectRadius(droneRadius)
                 .withMinPoint(new Point(0,0))
                 .withMaxPoint(new Point(5000,5000))
-//                .withMaxPoint(resolution)
                 .withDistanceUnit(SI.METER)
                 .withSpeedUnit(SI.METERS_PER_SECOND)
                 .withMaxSpeed(50))
@@ -115,16 +115,16 @@ public class DroneExample {
         for (Point storeLocation : storeLocations) {
             simulator.register(new Store(storeLocation));
         }
-        for (int i = 0; i < 1; i++) {
+        for (int i = 0; i < amountDroneLW; i++) {
             simulator.register(new DroneLW(speedDroneLW, capacityDroneLW, batteryDroneLW, chargingPointLocation));
         }
-        for (int i = 0; i < 1; i++) {
+        for (int i = 0; i < amountDroneHW; i++) {
             simulator.register(new DroneHW(speedDroneHW, capacityDroneHW, batteryDroneHW, chargingPointLocation));
         }
 
         simulator.addTickListener(new TickListener() {
             @Override
-            public void tick(TimeLapse time) {
+            public void tick(@NotNull TimeLapse time) {
                 if (rng.nextDouble() < orderProbability) {
                     Point location = planeRoadModel.getRandomPosition(rng);
                     Customer customer = new Customer(location);
@@ -141,14 +141,14 @@ public class DroneExample {
             }
 
             @Override
-            public void afterTick(TimeLapse timeLapse) {}
+            public void afterTick(@NotNull TimeLapse timeLapse) {}
         });
 
         simulator.start();
         return simulator;
     }
 
-    static View.Builder createGui(boolean testing) {
+    private static View.Builder createGui(boolean testing) {
         View.Builder view = View.builder()
             .with(PlaneRoadModelRenderer.builder())
             .with(RoadUserRenderer.builder()
@@ -200,7 +200,7 @@ public class DroneExample {
         try {
             Scanner scanner = new Scanner(new File(filename));
             scanner.useDelimiter("[,\n]");
-            while(scanner.hasNext()){
+            while (scanner.hasNext()) {
                 storeLocations.add(new Point(new Double(scanner.next()), new Double(scanner.next())));
             }
             scanner.close();

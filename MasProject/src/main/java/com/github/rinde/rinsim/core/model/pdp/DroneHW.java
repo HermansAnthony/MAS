@@ -21,8 +21,7 @@ public class DroneHW extends Drone {
 
     @Override
     public String getDroneString() {
-        String droneDescription = "HW_ID" + this.ID;
-        return droneDescription;
+        return "HW_ID" + this.ID;
     }
 
 }
