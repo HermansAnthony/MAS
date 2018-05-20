@@ -20,6 +20,7 @@ import energy.EnergyUser;
 import util.BatteryCalculations;
 import util.Monitor;
 import util.Range;
+import util.Tuple;
 
 import javax.measure.unit.SI;
 import java.util.HashMap;
@@ -134,15 +135,14 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
                 // Check if all exploration ants have returned
                 if (!explorationAnts.values().contains(false)) {
                     // Send out an intention ant to the order with the highest merit
-                    Order order = getBestOrder(timeLapse);
-                    if (order == null) {
+                    Tuple<Order, Double> intention = getBestIntention(timeLapse);
+                    if (intention.first == null) {
                         state = delegateMasState.initialState;
                         break;
                     }
-                    spawnIntentionAnt(order);
+                    spawnIntentionAnt(intention.first, intention.second);
                     // Clear all the exploration ants since they are outdated at this point
                     explorationAnts.clear();
-
                     state = delegateMasState.intentionAntReturned;
                 }
                 break;
@@ -206,13 +206,13 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
         }
     }
 
-    private void spawnIntentionAnt(Order order) {
-        IntentionAnt ant = new IntentionAnt(this, order);
+    private void spawnIntentionAnt(Order order, double merit) {
+        IntentionAnt ant = new IntentionAnt(this, order, merit);
         intentionAnt.put(ant, false);
         order.receiveAnt(ant);
     }
 
-    private Order getBestOrder(TimeLapse timeLapse) {
+    private util.Tuple<Order,Double> getBestIntention(TimeLapse timeLapse) {
         Order bestOrder = null;
         double bestMerit = Double.NEGATIVE_INFINITY;
 
@@ -237,7 +237,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
             monitor.writeToFile(timeLapse.getStartTime(), description);
         }
 
-        return bestOrder;
+        return new Tuple(bestOrder, bestMerit);
     }
 
     /**
