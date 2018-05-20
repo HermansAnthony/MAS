@@ -29,6 +29,7 @@ import java.util.concurrent.TimeUnit;
 
 public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
     private static int nextID = 0;
+    private static int RECONSIDERATION_MERIT = 10;
     int ID;
     private final Range SPEED_RANGE;
     private Optional<Parcel> payload;
@@ -193,12 +194,22 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
                     spawnExplorationAnts();
                 } else if (!explorationAnts.containsValue(false)) {
                     // Check for reconsiderations
-
-                    // TODO write consideration to logging file
+                    Tuple<Order, Double> intention = getBestIntention(timeLapse);
+                    double meritDifference = Math.abs(intention.second - intentionAnt.entrySet().iterator().next().getKey().merit);
+                    if ((meritDifference > RECONSIDERATION_MERIT) && (intention.first != null)){
+                        System.err.println("Reconsideration occurred");
+                        System.out.println("Got merit difference:" + meritDifference);
+                        System.out.println("Order" + intention.first);
+                        System.out.println("New best merit" + intention.second);
+                        String description = " Reconsideration happened: New best merit: " + intention.second + ".\n";
+                        description += "Intention ant is sent to order (" + intention.first.getOrderDescription() +").\n";
+                        monitor.writeToFile(timeLapse.getStartTime(), description);
+                        intentionAnt.clear();
+                        spawnIntentionAnt(intention.first, intention.second);
+                    }
                     // TODO: plug reconsideration function in here.
                     explorationAnts.clear();
                 }
-
 
                 state = delegateMasState.continueReservation;
                 break;
