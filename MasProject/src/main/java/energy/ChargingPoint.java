@@ -1,5 +1,9 @@
 package energy;
 
+import ant.Ant;
+import ant.AntReceiver;
+import ant.ExplorationAnt;
+import com.github.rinde.rinsim.core.model.time.TickListener;
 import pdp.Drone;
 import pdp.DroneHW;
 import pdp.DroneLW;
@@ -11,15 +15,17 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
-public class ChargingPoint implements RoadUser, EnergyUser {
+public class ChargingPoint implements AntReceiver, RoadUser, EnergyUser, TickListener {
     private Point location;
     private Map<Class<?>, List<Drone>> chargers;
+    private List<Ant> temporaryAnts;
 
     public ChargingPoint(Point loc, int maxCapacityLW, int maxCapacityHW) {
         location = loc;
         chargers = new HashMap<>();
         chargers.put(DroneLW.class, Arrays.asList(new Drone[maxCapacityLW]));
         chargers.put(DroneHW.class, Arrays.asList(new Drone[maxCapacityHW]));
+        temporaryAnts = new ArrayList<>();
     }
 
     @Override
@@ -98,4 +104,33 @@ public class ChargingPoint implements RoadUser, EnergyUser {
     public final Point getLocation() {
         return location;
     }
+
+    @Override
+    public void receiveAnt(Ant ant) {
+        if (ant instanceof ExplorationAnt) {
+            ExplorationAnt explorationAnt = (ExplorationAnt) ant;
+            explorationAnt.setChargingPointOccupation(this.occupationPercentage(ant.getPrimaryAgent().getClass()));
+        }
+
+        synchronized (temporaryAnts) {
+            temporaryAnts.add(ant);
+        }
+    }
+
+    @Override
+    public void tick(@NotNull TimeLapse timeLapse) {
+        // TODO move charging to here from energymodel
+        if (!timeLapse.hasTimeLeft())
+            return;
+
+        synchronized (temporaryAnts) {
+            for (Ant ant : temporaryAnts) {
+                ant.returnToPrimaryAgent();
+            }
+            temporaryAnts.clear();
+        }
+    }
+
+    @Override
+    public void afterTick(@NotNull TimeLapse timeLapse) {}
 }

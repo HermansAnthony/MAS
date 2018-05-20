@@ -1,6 +1,7 @@
 package pdp;
 
 import ant.Ant;
+import ant.AntReceiver;
 import ant.ExplorationAnt;
 import ant.IntentionAnt;
 import com.github.rinde.rinsim.core.model.pdp.PDPModel;
@@ -15,7 +16,7 @@ import com.google.common.base.Optional;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Order extends Parcel implements TickListener {
+public class Order extends Parcel implements AntReceiver, TickListener {
 
     private Customer customer;
     private List<Ant> temporaryAnts;
@@ -38,32 +39,6 @@ public class Order extends Parcel implements TickListener {
 
     @Override
     public void initRoadPDP(RoadModel pRoadModel, PDPModel pPdpModel) {}
-
-    public void receiveAnt(ExplorationAnt explorationAnt) {
-        explorationAnt.setParcelInformation(this);
-        synchronized(temporaryAnts) {
-            temporaryAnts.add(explorationAnt);
-        }
-    }
-
-    //
-    synchronized public void receiveAnt(IntentionAnt intentionAnt) {
-        if (!this.isReserved()) {
-            this.reserve(intentionAnt.getPrimaryAgent());
-            intentionAnt.reservationApproved = true;
-        } else {
-            if (reserver.get().equals(intentionAnt.getPrimaryAgent())) {
-               timeoutTimer = TIMEOUT_RESERVE;
-                intentionAnt.reservationApproved = true;
-            } else {
-                intentionAnt.reservationApproved = false;
-            }
-        }
-
-        synchronized(temporaryAnts) {
-            temporaryAnts.add(intentionAnt);
-        }
-    }
 
     synchronized private void reserve(Vehicle vehicle) {
         reserver = Optional.of(vehicle);
@@ -105,5 +80,35 @@ public class Order extends Parcel implements TickListener {
         }
         result += ", payload: " + this.getNeededCapacity() + " grams";
         return result;
+    }
+
+    @Override
+    public void receiveAnt(Ant ant) {
+        if (ant instanceof ExplorationAnt) {
+            ExplorationAnt explorationAnt = (ExplorationAnt) ant;
+            explorationAnt.setParcelInformation(this);
+            synchronized(temporaryAnts) {
+                temporaryAnts.add(explorationAnt);
+            }
+        }
+        else if (ant instanceof IntentionAnt) {
+            IntentionAnt intentionAnt = (IntentionAnt) ant;
+            if (!this.isReserved()) {
+                this.reserve(intentionAnt.getPrimaryAgent());
+                intentionAnt.reservationApproved = true;
+            } else {
+                if (reserver.get().equals(intentionAnt.getPrimaryAgent())) {
+                    timeoutTimer = TIMEOUT_RESERVE;
+                    intentionAnt.reservationApproved = true;
+                } else {
+                    intentionAnt.reservationApproved = false;
+                }
+            }
+        }
+
+        synchronized(temporaryAnts) {
+            temporaryAnts.add(ant);
+        }
+
     }
 }
