@@ -189,6 +189,12 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
                 break;
             }
             case spawnExplorationAnts: {
+                if (!payload.isPresent()) {
+                    // The order has been delivered, go back to the initial state
+                    state = delegateMasState.initialState;
+                    break;
+                }
+
                 if (explorationAnts.isEmpty()) {
                     // Spawn new exploration ants for possible reconsiderations
                     spawnExplorationAnts();
@@ -197,17 +203,15 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
                     Tuple<Order, Double> intention = getBestIntention(timeLapse);
                     double meritDifference = Math.abs(intention.second - intentionAnt.entrySet().iterator().next().getKey().merit);
                     if ((meritDifference > RECONSIDERATION_MERIT) && (intention.first != null)){
-                        System.err.println("Reconsideration occurred");
-                        System.out.println("Got merit difference:" + meritDifference);
-                        System.out.println("Order" + intention.first);
-                        System.out.println("New best merit" + intention.second);
-                        String description = " Reconsideration happened: New best merit: " + intention.second + ".\n";
-                        description += "Intention ant is sent to order (" + intention.first.getOrderDescription() +").\n";
-                        monitor.writeToFile(timeLapse.getStartTime(), description);
-                        intentionAnt.clear();
-                        spawnIntentionAnt(intention.first, intention.second);
+//                        System.err.println("Reconsideration occurred");
+//                        System.out.println("Got merit difference:" + meritDifference);
+//                        System.out.println("Order" + intention.first);
+//                        System.out.println("New best merit" + intention.second);
+                        if (reconsiderOrder(intention, timeLapse)) {
+                            state = delegateMasState.intentionAntReturned;
+                            break;
+                        }
                     }
-                    // TODO: plug reconsideration function in here.
                     explorationAnts.clear();
                 }
 
@@ -215,6 +219,25 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
                 break;
             }
         }
+    }
+
+    private boolean reconsiderOrder(Tuple<Order,Double> intention, TimeLapse timeLapse) {
+        PDPModel pm = getPDPModel();
+        PDPModel.VehicleState vehicleState = pm.getVehicleState(this);
+
+        if (pm.getParcelState(payload.get()) != PDPModel.ParcelState.AVAILABLE) {
+            return false;
+        }
+
+        intentionAnt.clear();
+        payload = Optional.absent();
+        spawnIntentionAnt(intention.first, intention.second);
+        explorationAnts.clear();
+
+        String description = " Reconsideration happened: New best merit: " + intention.second + ".\n";
+        description += "Intention ant is sent to order (" + intention.first.getOrderDescription() +").\n";
+        monitor.writeToFile(timeLapse.getStartTime(), description);
+        return true;
     }
 
     private void spawnIntentionAnt(Order order, double merit) {
@@ -310,7 +333,11 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
     }
 
     private void spawnExplorationAnts() {
-        for (Order order : getRoadModel().getObjectsOfType(Order.class)) {
+
+
+//        for (Order order : getRoadModel().getObjectsOfType(Order.class)) {
+        for (Parcel parcel : getPDPModel().getParcels(PDPModel.ParcelState.AVAILABLE)) {
+            Order order = (Order) parcel;
             ExplorationAnt explorationAnt = new ExplorationAnt(this);
             explorationAnts.put(explorationAnt, false);
             order.receiveAnt(explorationAnt);
@@ -326,15 +353,6 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
             moveToCustomer(rm, pdp, timeLapse);
         }
     }
-//
-//    private void getParcel(PDPModel pdp) {
-//        for (Parcel parcel : pdp.getParcels(PDPModel.ParcelState.AVAILABLE)) {
-//            if (parcel.getNeededCapacity() <= this.getCapacity()) {
-//                payload = Optional.of(parcel);
-//                System.out.println("Moving to store...");
-//            }
-//        }
-//    }
 
     private void moveToStore(RoadModel rm, PDPModel pdp, TimeLapse timeLapse) {
         rm.moveTo(this, payload.get().getPickupLocation(), timeLapse);
@@ -342,9 +360,9 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
         // If the drone has arrived at the store, pickup the parcel.
         if (rm.getPosition(this) == payload.get().getPickupLocation()) {
             try {
-                System.out.println("Arrived at store, moving to the customer...");
+//                System.out.println("Arrived at store, moving to the customer...");
                 pdp.pickup(this, payload.get(), timeLapse);
-                System.out.println("Carrying parcel.");
+//                System.out.println("Carrying parcel.");
             } catch(IllegalArgumentException e){
                 System.out.println("Parcel is already in transport with another drone. ");
                 payload = Optional.absent();
@@ -358,7 +376,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
 
         // If the drone arrived at the customer, deliver the package.
         if (rm.getPosition(this) == order.getDeliveryLocation()) {
-            System.out.println("At destination.");
+//            System.out.println("At destination.");
 
             new Thread(new RemoveCustomer(rm, pdp, order.getCustomer())).start();
             pdp.deliver(this, order, timeLapse);

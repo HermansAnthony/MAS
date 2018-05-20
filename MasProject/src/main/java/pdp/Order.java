@@ -97,6 +97,13 @@ public class Order extends Parcel implements TickListener {
     }
 
     public String getOrderDescription(){
-        return "location: " + this.getRoadModel().getPosition(this) + ", payload: " + this.getNeededCapacity() + " grams";
+        String result = "location: ";
+        try {
+            result += this.getRoadModel().getPosition(this);
+        } catch (Exception e) {
+            result += "in transit";
+        }
+        result += ", payload: " + this.getNeededCapacity() + " grams";
+        return result;
     }
 }
