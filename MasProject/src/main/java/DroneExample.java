@@ -200,7 +200,6 @@ public class DroneExample {
      */
     private static void loadStoreLocations(String filename) {
         storeLocations = new ArrayList<>();
-
         try {
             Scanner scanner = new Scanner(new File(filename));
             scanner.useDelimiter("[,\n]");
