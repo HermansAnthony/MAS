@@ -82,6 +82,10 @@ public class Order extends Parcel implements AntReceiver, TickListener {
         return result;
     }
 
+    private void resetTimeout() {
+        timeoutTimer = TIMEOUT_RESERVE;
+    }
+
     @Override
     public void receiveAnt(Ant ant) {
         if (ant instanceof ExplorationAnt) {
@@ -96,9 +100,10 @@ public class Order extends Parcel implements AntReceiver, TickListener {
             if (!this.isReserved()) {
                 this.reserve(intentionAnt.getPrimaryAgent());
                 intentionAnt.reservationApproved = true;
+                resetTimeout();
             } else {
                 if (reserver.get().equals(intentionAnt.getPrimaryAgent())) {
-                    timeoutTimer = TIMEOUT_RESERVE;
+                    resetTimeout();
                     intentionAnt.reservationApproved = true;
                 } else {
                     intentionAnt.reservationApproved = false;

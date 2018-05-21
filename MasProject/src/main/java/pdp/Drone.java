@@ -222,7 +222,6 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
 
     private boolean reconsiderOrder(Tuple<Order,Double> intention, TimeLapse timeLapse) {
         PDPModel pm = getPDPModel();
-        PDPModel.VehicleState vehicleState = pm.getVehicleState(this);
 
         if (pm.getParcelState(payload.get()) != PDPModel.ParcelState.AVAILABLE) {
             return false;
@@ -376,7 +375,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
             try {
                 pdp.pickup(this, payload.get(), timeLapse);
             } catch(IllegalArgumentException e){
-                System.out.println("Parcel is already in transport with another drone. ");
+                System.err.println(e.toString());
                 payload = Optional.absent();
             }
         }
