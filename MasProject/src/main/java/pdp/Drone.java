@@ -39,7 +39,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
 
     // Energy related stuff
     private Optional<EnergyModel> energyModel;
-    private boolean wantsToCharge;
+    private ChargingStatus chargingStatus;
     public EnergyDTO battery;
 
     // Delegate MAS stuff
@@ -67,7 +67,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
         payload = Optional.absent();
 
         energyModel = Optional.absent();
-        wantsToCharge = false;
+        chargingStatus = ChargingStatus.Idle;
         battery = _battery;
 
         state = delegateMasState.initialState;
@@ -114,7 +114,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
 
         delegateMAS(timeLapse);
 
-        if (wantsToCharge) {
+        if (chargingStatus == ChargingStatus.MoveToCharger) {
             moveToChargingPoint(rm, em, timeLapse);
         } else {
             handlePickupAndDelivery(rm, pdp, timeLapse);
@@ -393,7 +393,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
             pdp.deliver(this, order, timeLapse);
 
             payload = Optional.absent();
-            wantsToCharge = true;
+            chargingStatus = ChargingStatus.MoveToCharger;
         }
     }
 
@@ -405,7 +405,9 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
         } else if (!chargingPoint.dronePresent(this)) {
             // Only charge if there is a charger free
             if (!chargingPoint.chargersOccupied(this)) {
+                chargingPoint.reserveCharger(this);
                 chargingPoint.chargeDrone(this);
+                chargingStatus = ChargingStatus.Charging;
             }
         }
     }
@@ -416,7 +418,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
 
 
     public void stopCharging() {
-        wantsToCharge = false;
+        chargingStatus = ChargingStatus.Idle;
     }
 
     public EnergyModel getEnergyModel() {
@@ -482,6 +484,12 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
         explorationAntsReturned,
         continueReservation;
 
+    }
+
+    private enum ChargingStatus {
+        Idle,
+        MoveToCharger,
+        Charging;
     }
 
 }

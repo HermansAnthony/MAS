@@ -2,6 +2,7 @@ package energy;
 
 import com.github.rinde.rinsim.core.model.DependencyProvider;
 import com.github.rinde.rinsim.core.model.ModelBuilder.AbstractModelBuilder;
+import org.jetbrains.annotations.NotNull;
 import pdp.Drone;
 import com.github.rinde.rinsim.core.model.road.MoveEvent;
 import com.github.rinde.rinsim.core.model.road.PlaneRoadModel;
@@ -16,9 +17,9 @@ import java.util.List;
 
 public class DefaultEnergyModel extends EnergyModel {
 
-    List<Drone> drones;
-    ChargingPoint chargingPoint;
-    RoadModel roadModel;
+    private List<Drone> drones;
+    private ChargingPoint chargingPoint;
+    private RoadModel roadModel;
 
 
     private DefaultEnergyModel(RoadModel rm) {
@@ -49,7 +50,7 @@ public class DefaultEnergyModel extends EnergyModel {
     }
 
     @Override
-    public boolean register(EnergyUser energyUser) {
+    public boolean register(@NotNull EnergyUser energyUser) {
         if (energyUser instanceof Drone) {
             drones.add((Drone) energyUser);
         } else if (energyUser instanceof ChargingPoint) {
@@ -61,7 +62,7 @@ public class DefaultEnergyModel extends EnergyModel {
     }
 
     @Override
-    public boolean unregister(EnergyUser energyUser) {
+    public boolean unregister(@NotNull EnergyUser energyUser) {
         if (energyUser instanceof Drone) {
             drones.remove(energyUser);
         } else if (energyUser instanceof ChargingPoint) {
@@ -79,15 +80,10 @@ public class DefaultEnergyModel extends EnergyModel {
     }
 
     @Override
-    public void tick(TimeLapse timeLapse) {
-        chargingPoint.charge(timeLapse);
-        for (Drone drone : chargingPoint.redeployChargedDrones()) {
-            drone.stopCharging();
-        }
-    }
+    public void tick(@NotNull TimeLapse timeLapse) {}
 
     @Override
-    public void afterTick(TimeLapse timeLapse) {}
+    public void afterTick(@NotNull TimeLapse timeLapse) {}
 
     @Override
     public ChargingPoint getChargingPoint() {
@@ -104,7 +100,7 @@ public class DefaultEnergyModel extends EnergyModel {
         }
 
         @Override
-        public DefaultEnergyModel build(DependencyProvider dependencyProvider) {
+        public DefaultEnergyModel build(@NotNull DependencyProvider dependencyProvider) {
             final RoadModel rm = dependencyProvider.get(RoadModel.class);
             return new DefaultEnergyModel(rm);
         }
