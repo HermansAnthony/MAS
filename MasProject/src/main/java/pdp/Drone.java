@@ -36,6 +36,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
     int ID;
     private final Range SPEED_RANGE;
     private Optional<Parcel> payload;
+    private Optional<AntReceiver> destination;
 
     // Energy related stuff
     private Optional<EnergyModel> energyModel;
@@ -139,7 +140,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
                 // Check if all exploration ants have returned
                 if (!explorationAnts.values().contains(false)) {
                     // Send out an intention ant to the order with the highest merit
-                    Tuple<Order, Double> intention = getBestIntention(timeLapse);
+                    Tuple<AntReceiver, Double> intention = getBestIntention(timeLapse);
                     if (intention.first == null) {
                         state = delegateMasState.initialState;
                         break;
@@ -154,6 +155,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
             case intentionAntReturned: {
                 // If the intentionAnt has been cleared, the order has been delivered,
                 // and we need to start looking for a new one.
+                // TODO maybe remove this, legacy code
                 if (intentionAnt.isEmpty()) {
                     state = delegateMasState.initialState;
                     break;
@@ -162,7 +164,12 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
                 Map.Entry<IntentionAnt, Boolean> entry = intentionAnt.entrySet().iterator().next();
                 // Ant has returned and has an approved reservation
                 if (entry.getValue() && entry.getKey().reservationApproved) {
-                    payload = Optional.of(entry.getKey().reservedOrder);
+                    if (entry.getKey().destination instanceof Order) {
+                        payload = Optional.of((Order) entry.getKey().destination);
+                    } else if (entry.getKey().destination instanceof ChargingPoint) {
+                        System.out.println("Moving to charger");
+                        chargingStatus = ChargingStatus.MoveToCharger;
+                    }
 
                     // Intention ant needs to be sent out again to hold the reservation
                     state = delegateMasState.continueReservation;
@@ -175,7 +182,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
             case continueReservation: {
                 Map.Entry<IntentionAnt, Boolean> entry = intentionAnt.entrySet().iterator().next();
 
-                if (!payload.isPresent()) {
+                if (!payload.isPresent() && chargingStatus == ChargingStatus.Idle) {
                     // The order has been delivered, go back to the initial state
                     state = delegateMasState.initialState;
                     break;
@@ -185,14 +192,14 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
                     // If the intention ant has returned, resend it
                     entry.setValue(false); // Mark the ant as gone
                     entry.getKey().reservationApproved = false;
-                    entry.getKey().reservedOrder.receiveAnt(entry.getKey());
+                    entry.getKey().destination.receiveAnt(entry.getKey());
                 }
 
                 state = delegateMasState.spawnExplorationAnts;
                 break;
             }
             case spawnExplorationAnts: {
-                if (!payload.isPresent()) {
+                if (!payload.isPresent() && chargingStatus == ChargingStatus.Idle) {
                     // The order has been delivered, go back to the initial state
                     state = delegateMasState.initialState;
                     break;
@@ -203,10 +210,10 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
                     spawnExplorationAnts(false);
                 } else if (!explorationAnts.containsValue(false)) {
                     // Check for reconsiderations
-                    Tuple<Order, Double> intention = getBestIntention(timeLapse);
+                    Tuple<AntReceiver, Double> intention = getBestIntention(timeLapse);
                     double meritDifference = intention.second - intentionAnt.entrySet().iterator().next().getKey().merit;
                     if ((meritDifference > RECONSIDERATION_MERIT) && (intention.first != null)) {
-                        if (reconsiderOrder(intention, timeLapse)) {
+                        if (reconsiderAction(intention, timeLapse)) {
                             state = delegateMasState.intentionAntReturned;
                             break;
                         }
@@ -220,32 +227,35 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
         }
     }
 
-    private boolean reconsiderOrder(Tuple<Order,Double> intention, TimeLapse timeLapse) {
+    private boolean reconsiderAction(Tuple<AntReceiver,Double> intention, TimeLapse timeLapse) {
         PDPModel pm = getPDPModel();
 
-        if (pm.getParcelState(payload.get()) != PDPModel.ParcelState.AVAILABLE) {
+        if (!payload.isPresent() && chargingStatus == ChargingStatus.Charging) {
+            return false;
+        } else if (payload.isPresent() && pm.getParcelState(payload.get()) != PDPModel.ParcelState.AVAILABLE) {
             return false;
         }
 
         intentionAnt.clear();
         payload = Optional.absent();
+        chargingStatus = ChargingStatus.Idle;
         spawnIntentionAnt(intention.first, intention.second);
         explorationAnts.clear();
 
-        String description = " Reconsideration happened: New best merit: " + intention.second + ".\n";
-        description += "Intention ant is sent to order (" + intention.first.getOrderDescription() +").\n";
+        String description = "Reconsideration happened: new best merit = " + intention.second + ".\n";
+        description += "Intention ant is sent to '" + intention.first.getDescription() +"'.\n";
         monitor.writeToFile(timeLapse.getStartTime(), description);
         return true;
     }
 
-    private void spawnIntentionAnt(Order order, double merit) {
-        IntentionAnt ant = new IntentionAnt(this, order, merit);
+    private void spawnIntentionAnt(AntReceiver destination, double merit) {
+        IntentionAnt ant = new IntentionAnt(this, destination, merit);
         intentionAnt.put(ant, false);
-        order.receiveAnt(ant);
+        destination.receiveAnt(ant);
     }
 
-    private util.Tuple<Order,Double> getBestIntention(TimeLapse timeLapse) {
-        Order bestOrder = null;
+    private util.Tuple<AntReceiver,Double> getBestIntention(TimeLapse timeLapse) {
+        AntReceiver bestDestination = null;
         double bestMerit = Double.NEGATIVE_INFINITY;
 
         for (ExplorationAnt ant : explorationAnts.keySet().stream()
@@ -263,22 +273,34 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
 
             if (merit > bestMerit) {
                 bestMerit = merit;
-                bestOrder = order;
+                bestDestination = order;
+            }
+        }
+
+        for (ExplorationAnt ant : explorationAnts.keySet().stream()
+            .filter(o -> o.destination == ExplorationAnt.AntDestination.ChargingPoint).collect(Collectors.toList())) {
+            ChargingPoint chargingPoint = (ChargingPoint) ant.getSecondaryAgent();
+
+            double merit = determineChargeBenefits(ant.getChargingPointOccupation());
+
+            if (merit > bestMerit) {
+                bestMerit = merit;
+                bestDestination = chargingPoint;
             }
         }
 
         // Log the intention ant and merit calculation in the log file
-        if (bestOrder != null) {
+        if (bestDestination != null) {
             String description = " Best merit: " + bestMerit + ".\n";
-            description += "Intention ant is sent to order (" + bestOrder.getOrderDescription() +").\n";
+            description += "Intention ant is sent to '" + bestDestination.getDescription() +"'.\n";
             monitor.writeToFile(timeLapse.getStartTime(), description);
         }
 
-        return new Tuple(bestOrder, bestMerit);
+        return new Tuple<>(bestDestination, bestMerit);
     }
 
     private double determineChargeBenefits(double chargingPointOccupation) {
-        return 400 * (1 - chargingPointOccupation);
+        return this.battery.fullyCharged() ? Double.NEGATIVE_INFINITY : 100 * (1 - chargingPointOccupation);
     }
 
     /**
@@ -286,7 +308,6 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
      * Used heuristics (in respective order):
      *  - battery life
      *  - order urgency
-     *  - charging point occupation
      *  - travel distance
      * @param order The order for which the merit is calculated.
      * @param timeLapse The time at which this is calculated.
@@ -301,17 +322,17 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
 
         // Determine the total battery capacity that will be used for this specific order if it is chosen.
         // If the usage exceeds the current battery capacity, return -1 to make sure this order is not chosen.
-        // Otherwise, choose orders in favour of using as much of the remaining battery capacity as possible.
+        // Otherwise, choose orders in favour of using as little of the remaining battery capacity as possible.
         double distancePickup = rm.getDistanceOfPath(rm.getShortestPathTo(rm.getPosition(this), order.getPickupLocation())).doubleValue(SI.METER);
         double distanceDeliver = rm.getDistanceOfPath(rm.getShortestPathTo(order.getPickupLocation(), order.getDeliveryLocation())).doubleValue(SI.METER);
         double distanceCharge = rm.getDistanceOfPath(rm.getShortestPathTo(order.getDeliveryLocation(), em.getChargingPoint().getLocation())).doubleValue(SI.METER);
         double neededBatteryLevel = BatteryCalculations.calculateNecessaryBatteryLevel(
             this, distancePickup, distanceDeliver, distanceCharge, order.getNeededCapacity());
         if (neededBatteryLevel > this.battery.getBatteryLevel()) {
-            return -1;
+            return Double.NEGATIVE_INFINITY;
         }
 
-        merit += (neededBatteryLevel / this.battery.getBatteryLevel()) * 100;
+        merit += (1 - (neededBatteryLevel / this.battery.getBatteryLevel())) * 100;
 
 
         // Favour the orders which are closer to their specific deadline.
@@ -323,13 +344,9 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
 
         merit += meritPercentageTime * 200;
 
-        // TODO same as above, for chargingPoint calculations
-        merit += em.getChargingPoint().chargersOccupied(this) ? 50 : 0;
-
-
-        // Favour the orders which use up most of the drone's current travel capacity.
+        // Favour the orders which use up least of the drone's current travel capacity.
         double travelDistance = distancePickup + distanceDeliver + distanceCharge;
-        merit += ( 1 - (travelDistance / getTravelCapacity())) * 100;
+        merit += (1 - (travelDistance / getTravelCapacity())) * 100;
 
         return merit;
     }
@@ -392,7 +409,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
             pdp.deliver(this, order, timeLapse);
 
             payload = Optional.absent();
-            chargingStatus = ChargingStatus.MoveToCharger;
+//            chargingStatus = ChargingStatus.MoveToCharger;
         }
     }
 
@@ -404,7 +421,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
         } else if (!chargingPoint.dronePresent(this)) {
             // Only charge if there is a charger free
             if (!chargingPoint.chargersOccupied(this)) {
-                chargingPoint.reserveCharger(this);
+//                chargingPoint.reserveCharger(this);
                 chargingPoint.chargeDrone(this);
                 chargingStatus = ChargingStatus.Charging;
             }

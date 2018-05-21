@@ -7,7 +7,6 @@ import com.github.rinde.rinsim.core.model.road.RoadModel;
 import com.github.rinde.rinsim.geom.Point;
 import util.Range;
 
-
 public class DroneLW  extends Drone {
 
     public DroneLW(Range speedRange, int capacity, int batteryLevel, Point chargingLocation) {
@@ -25,6 +24,11 @@ public class DroneLW  extends Drone {
     @Override
     public String getDroneString() {
         return "LW_ID" + this.ID;
+    }
+
+    @Override
+    public String getDescription() {
+        return "lightweight drone - location: " + getRoadModel().getPosition(this) + ", capacity: " + this.getCapacity() + " grams";
     }
 
 }

@@ -7,13 +7,13 @@ public abstract class Ant {
     protected Drone primaryAgent;
     protected AntReceiver secondaryAgent; // TODO advanced exploration ants going to multiple nodes -> sort of planning
 
-    Ant(Drone _primaryAgent) {
-        primaryAgent = _primaryAgent;
+    Ant(Drone primaryAgent) {
+        this.primaryAgent = primaryAgent;
     }
 
 
-    public void setParcelInformation(AntReceiver _parcel) {
-        secondaryAgent = _parcel;
+    public void setSecondaryAgent(AntReceiver parcel) {
+        secondaryAgent = parcel;
     }
 
     public AntReceiver getSecondaryAgent() {

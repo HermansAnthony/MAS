@@ -1,5 +1,7 @@
 package ant;
 
 public interface AntReceiver {
-    public void receiveAnt(Ant ant);
+    void receiveAnt(Ant ant);
+
+    String getDescription();
 }

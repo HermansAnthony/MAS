@@ -72,6 +72,7 @@ public class Order extends Parcel implements AntReceiver, TickListener {
     }
 
     public String getOrderDescription(){
+        // TODO move this to the description down below
         String result = "location: ";
         try {
             result += this.getRoadModel().getPosition(this);
@@ -90,7 +91,7 @@ public class Order extends Parcel implements AntReceiver, TickListener {
     public void receiveAnt(Ant ant) {
         if (ant instanceof ExplorationAnt) {
             ExplorationAnt explorationAnt = (ExplorationAnt) ant;
-            explorationAnt.setParcelInformation(this);
+            explorationAnt.setSecondaryAgent(this);
             synchronized(temporaryAnts) {
                 temporaryAnts.add(explorationAnt);
             }
@@ -115,5 +116,10 @@ public class Order extends Parcel implements AntReceiver, TickListener {
             temporaryAnts.add(ant);
         }
 
+    }
+
+    @Override
+    public String getDescription() {
+        return "Order - " + getOrderDescription();
     }
 }

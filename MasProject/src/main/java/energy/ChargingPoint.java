@@ -3,6 +3,7 @@ package energy;
 import ant.Ant;
 import ant.AntReceiver;
 import ant.ExplorationAnt;
+import ant.IntentionAnt;
 import com.github.rinde.rinsim.core.model.road.RoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadUser;
 import com.github.rinde.rinsim.core.model.time.TickListener;
@@ -130,6 +131,21 @@ public class ChargingPoint implements AntReceiver, RoadUser, EnergyUser, TickLis
         if (ant instanceof ExplorationAnt) {
             ExplorationAnt explorationAnt = (ExplorationAnt) ant;
             explorationAnt.setChargingPointOccupation(this.occupationPercentage(ant.getPrimaryAgent().getClass()));
+            explorationAnt.setSecondaryAgent(this);
+        } else if (ant instanceof IntentionAnt) {
+            IntentionAnt intentionAnt = (IntentionAnt) ant;
+            // TODO add timeout timers for reservations
+
+
+            if (!dronePresent(intentionAnt.getPrimaryAgent())) {
+                // The drone wishes to reserve a spot in the charger
+                if (!chargersOccupied(ant.getPrimaryAgent())) {
+                    this.reserveCharger(ant.getPrimaryAgent());
+                    intentionAnt.reservationApproved = true;
+                } else {
+                    intentionAnt.reservationApproved = false;
+                }
+            }
         }
 
         synchronized (temporaryAnts) {
@@ -138,10 +154,18 @@ public class ChargingPoint implements AntReceiver, RoadUser, EnergyUser, TickLis
     }
 
     @Override
+    public String getDescription() {
+        return "ChargingPoint - location: " + location + ", occupation: "
+            + occupationPercentage(DroneLW.class) * 100 + "% lightweight & "
+            + occupationPercentage(DroneHW.class) * 100 + "% heavyweight";
+    }
+
+    @Override
     public void tick(@NotNull TimeLapse timeLapse) {
         if (!timeLapse.hasTimeLeft())
             return;
 
+        System.out.println(this.getDescription());
         this.charge(timeLapse);
 
         for (Drone drone : this.redeployChargedDrones()) {

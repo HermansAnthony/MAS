@@ -26,4 +26,8 @@ public class DroneHW extends Drone {
         return "HW_ID" + this.ID;
     }
 
+    @Override
+    public String getDescription() {
+        return "Heavyweight drone - location: " + getRoadModel().getPosition(this) + ", capacity: " + this.getCapacity() + " grams";
+    }
 }
