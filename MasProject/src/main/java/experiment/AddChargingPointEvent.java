@@ -1,9 +1,6 @@
 package experiment;
 
-import java.io.Serializable;
-
 import com.github.rinde.rinsim.core.SimulatorAPI;
-import com.github.rinde.rinsim.core.model.pdp.Depot;
 import com.github.rinde.rinsim.geom.Point;
 import com.github.rinde.rinsim.scenario.TimedEvent;
 import com.github.rinde.rinsim.scenario.TimedEventHandler;
@@ -14,11 +11,14 @@ import energy.ChargingPoint;
  * @author Anthony Hermans, Federico Quin
  */
 public class AddChargingPointEvent implements TimedEvent {
-    private static int amountDroneLW = 5;
-    private static int amountDroneHW = 5;
+    private final int amountDroneLW;
+    private final int amountDroneHW;
     private Point position;
-    AddChargingPointEvent(Point _position) {
-        position = _position;
+
+    private AddChargingPointEvent(Point position, int amtDroneLW, int amtDroneHW) {
+        this.position = position;
+        this.amountDroneLW = amtDroneLW;
+        this.amountDroneHW = amtDroneHW;
     }
 
     /**
@@ -26,14 +26,24 @@ public class AddChargingPointEvent implements TimedEvent {
      */
     public Point getPosition(){return position;}
 
+    public int getAmtChargersLW() {
+        return amountDroneLW;
+    }
+
+    public int getAmtChargersHW() {
+        return amountDroneHW;
+    }
+
+
     /**
      * Create a new {@link AddChargingPointEvent} instance.
-     * @param time The time at which the event is to be dispatched.
      * @param position {@link #getPosition()}
+     * @param amtDroneLW the amount of chargers for the {@link pdp.DroneLW} drones.
+     * @param amtDroneHW the amount of chargers for the {@link pdp.DroneHW} drones.
      * @return A new instance.
      */
-    public static AddChargingPointEvent create(long time, Point position) {
-        return new AddChargingPointEvent(position);
+    public static AddChargingPointEvent create(Point position, int amtDroneLW, int amtDroneHW) {
+        return new AddChargingPointEvent(position, amtDroneLW, amtDroneHW);
     }
 
     /**
@@ -45,19 +55,6 @@ public class AddChargingPointEvent implements TimedEvent {
         return Handler.INSTANCE;
     }
 
-    /**
-     * {@link TimedEventHandler} that creates {@link Depot}s with an overridden
-     * toString implementation. The depots are called 'Depot X', where 'X' is a
-     * number.
-     * <p>
-     * <b>Warning:</b> This handler should only be used for debugging purposes and
-     * is not thread safe.
-     * @return A newly constructed handler.
-     */
-    public static TimedEventHandler<AddChargingPointEvent> namedHandler() {
-        return new ChargingPointCreator();
-    }
-
     @Override
     public long getTime() {
         return 0;
@@ -67,7 +64,7 @@ public class AddChargingPointEvent implements TimedEvent {
         INSTANCE {
             @Override
             public void handleTimedEvent(AddChargingPointEvent event, SimulatorAPI sim) {
-                sim.register(new ChargingPoint(event.getPosition(), amountDroneLW,amountDroneHW));
+                sim.register(new ChargingPoint(event.getPosition(), event.getAmtChargersLW(), event.getAmtChargersHW()));
             }
 
             @Override
@@ -75,24 +72,6 @@ public class AddChargingPointEvent implements TimedEvent {
                 return AddChargingPointEvent.class.getSimpleName() + ".defaultHandler()";
             }
         };
-    }
-
-    static class ChargingPointCreator
-            implements TimedEventHandler<AddChargingPointEvent>, Serializable {
-        private static final long serialVersionUID = 3888253170041895475L;
-
-
-        ChargingPointCreator() {}
-
-        @Override
-        public void handleTimedEvent(AddChargingPointEvent event, SimulatorAPI simulator) {
-            simulator.register(new ChargingPoint(event.getPosition(), amountDroneLW, amountDroneHW));
-        }
-
-        @Override
-        public String toString() {
-            return AddChargingPointEvent.class.getSimpleName() + ".namedHandler()";
-        }
     }
 
 }

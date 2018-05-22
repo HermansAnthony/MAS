@@ -394,7 +394,12 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
         // If the drone arrived at the customer, deliver the package.
         if (rm.getPosition(this) == order.getDeliveryLocation()) {
 
-            new Thread(new RemoveCustomer(rm, pdp, order.getCustomer())).start();
+            RoadUser customer = rm.getObjectsOfType(Customer.class).stream()
+                .filter(o -> rm.getPosition(o) == order.getDeliveryLocation())
+                .findFirst()
+                .get();
+
+            new Thread(new RemoveCustomer(rm, pdp, customer)).start();
             pdp.deliver(this, order, timeLapse);
 
             payload = Optional.absent();
