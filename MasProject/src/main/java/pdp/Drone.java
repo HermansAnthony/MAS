@@ -455,6 +455,21 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
 
     public abstract String getDroneString();
 
+    // Returns the current charge status of the drone
+    // 0 indicates the drone is more than 90% charged
+    // 1 indicates that the drone is charging
+    // 2 indicates the drone is in transit with less that 90% battery capacity
+    public int getChargingStatus(){
+        if ((battery.getBatteryLevel()/battery.getMaxCapacity()) >= 0.90) return 0;
+        switch(chargingStatus){
+            case Charging:
+                return 1;
+            case Idle:
+                return 2;
+            default:
+                return 2;
+        }
+    }
 
     // TODO find better way of dealing with removal of customers than using threads.
     private class RemoveCustomer implements Runnable {

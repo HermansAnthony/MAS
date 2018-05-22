@@ -2,20 +2,20 @@ package renderer;
 
 import com.github.rinde.rinsim.core.model.DependencyProvider;
 import com.github.rinde.rinsim.core.model.ModelBuilder.AbstractModelBuilder;
-import energy.EnergyModel;
-import pdp.Drone;
-import pdp.DroneHW;
-import pdp.DroneLW;
 import com.github.rinde.rinsim.core.model.pdp.PDPModel;
 import com.github.rinde.rinsim.core.model.road.PlaneRoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadUser;
 import com.github.rinde.rinsim.geom.Point;
 import com.github.rinde.rinsim.ui.renderers.CanvasRenderer;
 import com.github.rinde.rinsim.ui.renderers.ViewPort;
+import energy.EnergyModel;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
+import pdp.Drone;
+import pdp.DroneHW;
+import pdp.DroneLW;
 
 import java.util.Map;
 
@@ -83,10 +83,15 @@ public class DroneRenderer extends CanvasRenderer.AbstractCanvasRenderer {
         shell.setText(status);
     }
 
+    private int getChargeColor(Drone drone){
+        final int chargeStatus = drone.getChargingStatus();
+        if (chargeStatus == 0) return SWT.COLOR_DARK_GREEN;
+        if (chargeStatus == 1) return SWT.COLOR_DARK_RED;
+        return SWT.COLOR_DARK_CYAN;
+
+
+    }
     private void renderDrone(RoadUser user, GC gc, ViewPort vp, int xpx, int ypx, int r){
-        // TODO make ID with red background if drone is charging
-        // TODO Make id with green background if fully charged
-        // TODO Make id with orange background if not fully charged
         Drone d = (Drone) user;
         final PDPModel.VehicleState vs = pdpModel.getVehicleState(d);
         String text = determineStatus(d, vs);
@@ -98,8 +103,9 @@ public class DroneRenderer extends CanvasRenderer.AbstractCanvasRenderer {
                 xpx - vp.scale(r), ypx - vp.scale(r),
                 2 * vp.scale(r), 2 * vp.scale(r));
         String droneInfo = Integer.toString(d.getID());
+        int chargeStatus = getChargeColor(d);
         final org.eclipse.swt.graphics.Point nameExtent = gc.textExtent(droneInfo);
-        gc.setBackground(gc.getDevice().getSystemColor(SWT.COLOR_BLACK));
+        gc.setBackground(gc.getDevice().getSystemColor(chargeStatus));
         gc.fillRoundRectangle(xpx + offsetX - nameExtent.x / 2, ypx - 20 - nameExtent.y / 2,
                 nameExtent.x + 2, nameExtent.y + 2, 5,
                 5);
