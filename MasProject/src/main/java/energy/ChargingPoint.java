@@ -4,15 +4,15 @@ import ant.Ant;
 import ant.AntReceiver;
 import ant.ExplorationAnt;
 import ant.IntentionAnt;
-import com.github.rinde.rinsim.core.model.road.RoadModel;
-import com.github.rinde.rinsim.core.model.road.RoadUser;
 import com.github.rinde.rinsim.core.model.time.TickListener;
-import com.github.rinde.rinsim.core.model.time.TimeLapse;
-import com.github.rinde.rinsim.geom.Point;
-import org.jetbrains.annotations.NotNull;
 import pdp.Drone;
 import pdp.DroneHW;
 import pdp.DroneLW;
+import com.github.rinde.rinsim.core.model.road.RoadModel;
+import com.github.rinde.rinsim.core.model.road.RoadUser;
+import com.github.rinde.rinsim.core.model.time.TimeLapse;
+import com.github.rinde.rinsim.geom.Point;
+import org.jetbrains.annotations.NotNull;
 import util.Tuple;
 
 import java.util.*;
@@ -215,5 +215,4 @@ public class ChargingPoint implements AntReceiver, RoadUser, EnergyUser, TickLis
             cancelReservation(drone);
         }
     }
-
 }

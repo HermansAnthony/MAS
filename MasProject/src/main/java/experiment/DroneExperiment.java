@@ -1,3 +1,5 @@
+package experiment;
+
 import com.github.rinde.rinsim.core.Simulator;
 import com.github.rinde.rinsim.core.SimulatorAPI;
 import com.github.rinde.rinsim.core.model.pdp.*;
@@ -29,6 +31,8 @@ import org.eclipse.swt.graphics.RGB;
 import org.jetbrains.annotations.NotNull;
 import pdp.*;
 import util.Range;
+import renderer.DroneRenderer;
+import renderer.MapRenderer;
 
 import javax.annotation.Nullable;
 import javax.imageio.ImageIO;
@@ -59,6 +63,9 @@ public class DroneExperiment {
 
     private static int batteryDroneLW = 2400;  // Expressed in seconds
     private static int batteryDroneHW = 1500;  // Expressed in seconds
+
+    private static final int amountDroneLW = 1;
+    private static final int amountDroneHW = 1;
 
     //    private static final int droneRadius = 1;
     private static final int amountChargersLW = 5;
@@ -96,7 +103,6 @@ public class DroneExperiment {
      * Main method
      */
     public static void main(String[] args) {
-//        final Optional<ExperimentResults> results;
         System.out.println("Creating the scenario...");
         Scenario scenario = createScenario();
         System.out.println("Scenario done...");
@@ -107,11 +113,13 @@ public class DroneExperiment {
                 // very useful for debugging these should not be used in production as
                 // these are not thread safe. Use the 'defaultHandler()' instead.
                 .addEventHandler(AddDepotEvent.class, AddDepotEvent.namedHandler())
-                .addEventHandler(AddParcelEvent.class, AddParcelEvent.namedHandler())
+                .addEventHandler(AddChargingPointEvent.class, AddChargingPointEvent.namedHandler())
+                .addEventHandler(AddOrderEvent.class, AddOrderEvent.namedHandler())
                 // There is no default handle for vehicle events, here a non functioning
                 // handler is added, it can be changed to add a custom vehicle to the
                 // simulator.
-                .addEventHandler(AddVehicleEvent.class, null) // TODO change this to our drones
+                .addEventHandler(AddDroneEvent.class, DroneLWHandler.INSTANCE)
+//                .addEventHandler(AddDroneEvent.class, DroneHWHandler.INSTANCE)
                 .addEventHandler(TimeOutEvent.class, TimeOutEvent.ignoreHandler())
                 // Note: if you multi-agent system requires the aid of a model (e.g.
                 // CommModel) it can be added directly in the configuration. Models that
@@ -141,17 +149,7 @@ public class DroneExperiment {
                 // gather simulation results. The objects created by the post processor
                 // end up in the ExperimentResults object that is returned by the
                 // perform(..) method of Experiment.
-                .usePostProcessor(new PostProcessor() {
-                    @Override
-                    public Object collectResults(Simulator sim, Experiment.SimArgs args) {
-                        return null;
-                    }
-
-                    @Override
-                    public FailureStrategy handleFailure(Exception e, Simulator sim, Experiment.SimArgs args) {
-                        return null;
-                    }
-                })
+                .usePostProcessor(new ExperimentPostProcessor())
 
                 // Adds the GUI just like it is added to a Simulator object.
 
@@ -162,17 +160,17 @@ public class DroneExperiment {
                 // you can see an overview of the supported options.
                 .perform();
 
-//        if (results.isPresent()) {
-//            for (final Experiment.SimulationResult sr : results.get().getResults()) {
-//                // The SimulationResult contains all information about a specific
-//                // simulation, the result object is the object created by the post
-//                // processor, a String in this case.
-//                System.out.println(
-//                        sr.getSimArgs().getRandomSeed() + " " + sr.getResultObject());
-//            }
-//        } else {
-//            throw new IllegalStateException("Experiment did not complete.");
-//        }
+        try {
+            for (final Experiment.SimulationResult sr : results.getResults()) {
+                // The SimulationResult contains all information about a specific
+                // simulation, the result object is the object created by the post
+                // processor, a String in this case.
+                System.out.println(
+                        sr.getSimArgs().getRandomSeed() + " " + sr.getResultObject());
+            }
+        } catch(Exception e) {
+            throw new IllegalStateException("Experiment did not complete.");
+        }
     }
 
     /**
@@ -190,25 +188,27 @@ public class DroneExperiment {
                 // Adds one depot.
                 .addEvent(AddDepotEvent.create(-1, storeLocation1))
                 .addEvent(AddDepotEvent.create(-1, storeLocation2))
-                .addEvent(AddVehicleEvent.create(-1, new DroneLW(speedDroneLW, capacityDroneLW, batteryDroneLW, chargingPointLocation).getDTO()))
+                .addEvent(AddDroneEvent.create(-1, new DroneLW(speedDroneLW, capacityDroneLW, batteryDroneLW, chargingPointLocation)))
+//                .addEvent(AddDroneEvent.create(-1, new DroneHW(speedDroneHW, capacityDroneHW, batteryDroneHW, chargingPointLocation)))
+                .addEvent(AddChargingPointEvent.create(-1, chargingPointLocation))
                 // Two add parcel events are added. They are announced at different
                 // times and have different time windows.
                 .addEvent(
-                        AddParcelEvent.create(Parcel.builder(P1_PICKUP, P1_DELIVERY)
+                        AddOrderEvent.create(Parcel.builder(P1_PICKUP, P1_DELIVERY)
                                 .neededCapacity(0)
                                 .orderAnnounceTime(M1)
                                 .pickupTimeWindow(TimeWindow.create(M1, M20))
                                 .deliveryTimeWindow(TimeWindow.create(M4, M30))
-                                .buildDTO()))
+                                .buildDTO(), new Point(500,500)))
 
                 .addEvent(
-                        AddParcelEvent.create(Parcel.builder(P2_PICKUP, P2_DELIVERY)
+                        AddOrderEvent.create(Parcel.builder(P2_PICKUP, P2_DELIVERY)
                                 .neededCapacity(0)
                                 .orderAnnounceTime(M5)
                                 .pickupTimeWindow(TimeWindow.create(M10, M25))
                                 .deliveryTimeWindow(
                                         TimeWindow.create(M20, M40))
-                                .buildDTO()))
+                                .buildDTO(), new Point(800,400)))
 
                 // Signals the end of the scenario. Note that it is possible to stop the
                 // simulation before or after this event is dispatched, that depends on
@@ -217,18 +217,19 @@ public class DroneExperiment {
                 .scenarioLength(M60)
 
                 // Adds a plane road model as this is part of the problem
-                .addModel(
-                        PDPRoadModel.builder(
-                                RoadModelBuilders.plane()
-                                        .withMinPoint(new Point(0,0))
-                                        .withMaxPoint(resolution)
-                                        .withMaxSpeed(22)))
+                .addModel(RoadModelBuilders.plane()
+//                .withObjectRadius(droneRadius)
+                        .withMinPoint(new Point(0,0))
+                        .withMaxPoint(new Point(5000,5000))
+                        .withDistanceUnit(SI.METER)
+                        .withSpeedUnit(SI.METERS_PER_SECOND)
+                        .withMaxSpeed(50))
 
                 // Adds the pdp model
-                // TODO wth is tardy
-                .addModel(
-                        DefaultPDPModel.builder()
-                                .withTimeWindowPolicy(TimeWindowPolicy.TimeWindowPolicies.TARDY_ALLOWED))
+                .addModel(DefaultPDPModel.builder())
+
+                // Adds the energy model
+                .addModel(DefaultEnergyModel.builder())
 
                 // The stop condition indicates when the simulator should stop the
                 // simulation. Typically this is the moment when all tasks are performed.
@@ -246,20 +247,24 @@ public class DroneExperiment {
         View.Builder view = View.builder()
                 .with(PlaneRoadModelRenderer.builder())
                 .with(RoadUserRenderer.builder()
-                        .withColorAssociation(
-                                Parcel.class, new RGB(200, 200, 200))
+                        .withImageAssociation(
+                                Customer.class, "/customer-32.png")
                         .withImageAssociation(
                                 Depot.class, "/store-40.png")
-//                        .withImageAssociation(
-//                                ChargingPoint.class, "/chargingPoint-40.png")
                         .withImageAssociation(
-                                DroneLW.class, "/droneLW-32.png"))
-//                        .withImageAssociation(
-//                                DroneHW.class, "/droneHW-32.png"))
+                                ChargingPoint.class, "/chargingPoint-40.png")
+                        .withImageAssociation(
+                                DroneLW.class, "/droneLW-32.png")
+                        .withImageAssociation(
+                                DroneHW.class, "/droneHW-32.png"))
                 .with(DroneRenderer.builder())
                 .with(MapRenderer.builder("target/classes/leuven.png"))
+                .with(TimeLinePanel.builder())
+                .with(RouteRenderer.builder())
+                .with(RoutePanel.builder().withPositionLeft())
+                .with(StatsPanel.builder())
                 .withResolution(new Double(resolution.x).intValue(), new Double(resolution.y).intValue())
-                .withTitleAppendix("Drone Demo - WIP");
+                .withTitleAppendix("Drone experiment - WIP");
 
         if (testing) {
             view = view.withAutoClose()
@@ -270,13 +275,19 @@ public class DroneExperiment {
         System.out.println("View done");
         return view;
     }
-//    enum CustomVehicleHandler implements TimedEventHandler<AddVehicleEvent> {
+
+    enum DroneLWHandler implements TimedEventHandler<AddDroneEvent> {
+        INSTANCE {
+            @Override
+            public void handleTimedEvent(AddDroneEvent event, SimulatorAPI sim) {
+                sim.register(new DroneLW(speedDroneLW, capacityDroneLW, batteryDroneLW, chargingPointLocation));
+            }
+        }
+    }
+//    enum DroneHWHandler implements TimedEventHandler<AddDroneEvent> {
 //        INSTANCE {
-//            @Override
-//            public void handleTimedEvent(AddVehicleEvent event, SimulatorAPI sim) {
-//                // add your own vehicle to the simulator here
-//                sim.register(
-//                        new ExampleRouteFollowingVehicle(event.getVehicleDTO(), true));
+//            public void handleTimedEvent(AddDroneEvent event, SimulatorAPI sim) {
+//                sim.register(new DroneHW(speedDroneHW, capacityDroneHW, batteryDroneHW, chargingPointLocation));
 //            }
 //        }
 //    }

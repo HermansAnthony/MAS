@@ -1,3 +1,5 @@
+package renderer;
+
 import com.github.rinde.rinsim.core.model.DependencyProvider;
 import com.github.rinde.rinsim.core.model.ModelBuilder;
 import com.github.rinde.rinsim.core.model.road.PlaneRoadModel;
@@ -19,7 +21,7 @@ public class MapRenderer extends CanvasRenderer.AbstractCanvasRenderer {
         map = m;
     }
 
-    static MapRenderer.Builder builder(String map) { return new MapRenderer.Builder(map); }
+    public static MapRenderer.Builder builder(String map) { return new MapRenderer.Builder(map); }
 
     @Override
     public void renderStatic(GC gc, ViewPort vp) {

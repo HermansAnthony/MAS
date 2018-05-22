@@ -1,3 +1,5 @@
+package renderer;
+
 import com.github.rinde.rinsim.core.model.DependencyProvider;
 import com.github.rinde.rinsim.core.model.ModelBuilder.AbstractModelBuilder;
 import energy.EnergyModel;
@@ -31,7 +33,7 @@ public class DroneRenderer extends CanvasRenderer.AbstractCanvasRenderer {
         energyModel = d;
     }
 
-    static DroneRenderer.Builder builder() { return new Builder(); }
+    public static DroneRenderer.Builder builder() { return new Builder(); }
 
     @Override
     public void renderStatic(GC gc, ViewPort vp) {
@@ -74,6 +76,7 @@ public class DroneRenderer extends CanvasRenderer.AbstractCanvasRenderer {
 
     // Show the information of the charging station in a separate window
     private void showChargingInfo(String status) {
+        // TODO add separate canvas with charging point info
         Display display = new Display();
         Shell shell = new Shell(display);
         shell.setBounds(10, 10, 500, 1000);
@@ -81,7 +84,9 @@ public class DroneRenderer extends CanvasRenderer.AbstractCanvasRenderer {
     }
 
     private void renderDrone(RoadUser user, GC gc, ViewPort vp, int xpx, int ypx, int r){
-        // TODO render the drone ID on the UI!
+        // TODO make ID with red background if drone is charging
+        // TODO Make id with green background if fully charged
+        // TODO Make id with orange background if not fully charged
         Drone d = (Drone) user;
         final PDPModel.VehicleState vs = pdpModel.getVehicleState(d);
         String text = determineStatus(d, vs);
@@ -119,7 +124,7 @@ public class DroneRenderer extends CanvasRenderer.AbstractCanvasRenderer {
 
         private static final long serialVersionUID = -1772420262312399129L;
 
-        Builder() {
+        public Builder() {
             setDependencies(PlaneRoadModel.class, PDPModel.class, EnergyModel.class);
         }
 
