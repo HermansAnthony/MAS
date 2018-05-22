@@ -16,13 +16,16 @@ import pdp.DroneLW;
 import util.Tuple;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class ChargingPoint implements AntReceiver, RoadUser, EnergyUser, TickListener {
+    private static final Integer TIMEOUT_RESERVATION = 20;
     private Point location;
     private Map<Class<?>, List<Tuple<Drone, Boolean>>> chargers; // Keeps a list per drone type of chargers
                                                                  // The boolean indicates if the drone is present currently
-    private Queue<Ant> temporaryAnts;
+    private Map<Drone, Integer> timeoutReservations;
 
+    private Queue<Ant> temporaryAnts;
     private EnergyModel energyModel;
 
     public ChargingPoint(Point loc, int maxCapacityLW, int maxCapacityHW) {
@@ -30,6 +33,7 @@ public class ChargingPoint implements AntReceiver, RoadUser, EnergyUser, TickLis
         chargers = new HashMap<>();
         chargers.put(DroneLW.class, Arrays.asList(new Tuple[maxCapacityLW]));
         chargers.put(DroneHW.class, Arrays.asList(new Tuple[maxCapacityHW]));
+        timeoutReservations = new HashMap<>();
         temporaryAnts = new ArrayDeque<>();
     }
 
@@ -38,12 +42,25 @@ public class ChargingPoint implements AntReceiver, RoadUser, EnergyUser, TickLis
         roadModel.addObjectAt(this, location);
     }
 
-    public void reserveCharger(Drone drone) {
+    private void reserveCharger(Drone drone) {
         assert(!this.chargersOccupied(drone.getClass()));
 
         List<Tuple<Drone, Boolean>> drones = chargers.get(drone.getClass());
         drones.set(drones.indexOf(null), new Tuple<>(drone, false));
+        timeoutReservations.put(drone, TIMEOUT_RESERVATION);
+    }
 
+    private void cancelReservation(Drone drone) {
+        assert(this.dronePresent(drone));
+        List<Tuple<Drone, Boolean>> drones = chargers.get(drone.getClass());
+        // Remove the drone from the charger
+        drones.set(drones.indexOf(drones.stream()
+            .filter(Objects::nonNull)
+            .filter(o -> o.first == drone)
+            .collect(Collectors.toList())
+            .iterator().next()), null);
+        // Cancel the timer on the specific reservation
+        timeoutReservations.remove(drone);
     }
 
     public void chargeDrone(Drone drone) {
@@ -53,6 +70,7 @@ public class ChargingPoint implements AntReceiver, RoadUser, EnergyUser, TickLis
         } else {
             // Set the drone in the charger to active
             chargers.get(drone.getClass()).stream()
+                .filter(Objects::nonNull)
                 .filter(o -> o.first == drone)
                 .findFirst().get()
                 .second = true;
@@ -69,7 +87,7 @@ public class ChargingPoint implements AntReceiver, RoadUser, EnergyUser, TickLis
     }
 
     private double occupationPercentage(Class droneClass) {
-        return chargers.get(droneClass).stream().filter(Objects::nonNull).count() / chargers.get(droneClass).size();
+        return ((double) chargers.get(droneClass).stream().filter(Objects::nonNull).count()) / chargers.get(droneClass).size();
     }
 
     public boolean dronePresent(Drone drone) {
@@ -104,6 +122,7 @@ public class ChargingPoint implements AntReceiver, RoadUser, EnergyUser, TickLis
                 if (droneTuple != null && droneTuple.first.battery.fullyCharged() && droneTuple.second) {
                     redeployableDrones.add(droneTuple.first);
                     droneTuples.set(i, null);
+                    timeoutReservations.remove(droneTuple.first);
                 }
             }
         }
@@ -129,14 +148,14 @@ public class ChargingPoint implements AntReceiver, RoadUser, EnergyUser, TickLis
     @Override
     public void receiveAnt(Ant ant) {
         if (ant instanceof ExplorationAnt) {
+
             ExplorationAnt explorationAnt = (ExplorationAnt) ant;
             explorationAnt.setChargingPointOccupation(this.occupationPercentage(ant.getPrimaryAgent().getClass()));
             explorationAnt.setSecondaryAgent(this);
+
         } else if (ant instanceof IntentionAnt) {
+
             IntentionAnt intentionAnt = (IntentionAnt) ant;
-            // TODO add timeout timers for reservations
-
-
             if (!dronePresent(intentionAnt.getPrimaryAgent())) {
                 // The drone wishes to reserve a spot in the charger
                 if (!chargersOccupied(ant.getPrimaryAgent())) {
@@ -145,7 +164,10 @@ public class ChargingPoint implements AntReceiver, RoadUser, EnergyUser, TickLis
                 } else {
                     intentionAnt.reservationApproved = false;
                 }
+            } else if (timeoutReservations.containsKey(intentionAnt.getPrimaryAgent())) {
+                timeoutReservations.replace(intentionAnt.getPrimaryAgent(), TIMEOUT_RESERVATION);
             }
+
         }
 
         synchronized (temporaryAnts) {
@@ -165,13 +187,10 @@ public class ChargingPoint implements AntReceiver, RoadUser, EnergyUser, TickLis
         if (!timeLapse.hasTimeLeft())
             return;
 
-        System.out.println(this.getDescription());
         this.charge(timeLapse);
-
         for (Drone drone : this.redeployChargedDrones()) {
             drone.stopCharging();
         }
-
 
         synchronized (temporaryAnts) {
             while (!temporaryAnts.isEmpty()) {
@@ -181,5 +200,20 @@ public class ChargingPoint implements AntReceiver, RoadUser, EnergyUser, TickLis
     }
 
     @Override
-    public void afterTick(@NotNull TimeLapse timeLapse) {}
+    public void afterTick(@NotNull TimeLapse timeLapse) {
+        List<Drone> timeoutDrones = new ArrayList<>();
+        for (Map.Entry<Drone, Integer> reservation : timeoutReservations.entrySet()) {
+            int newValue = reservation.getValue() - 1;
+            reservation.setValue(newValue);
+
+            if (newValue <= 0) {
+                timeoutDrones.add(reservation.getKey());
+            }
+        }
+
+        for (Drone drone: timeoutDrones) {
+            cancelReservation(drone);
+        }
+    }
+
 }

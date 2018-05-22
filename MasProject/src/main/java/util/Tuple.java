@@ -8,4 +8,8 @@ public class Tuple<K,V> {
         first = k;
         second = v;
     }
+
+    public String toString() {
+        return "<" + first.toString() + "," + second.toString() + ">";
+    }
 }

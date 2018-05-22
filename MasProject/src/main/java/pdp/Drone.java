@@ -22,6 +22,7 @@ import util.Monitor;
 import util.Range;
 import util.Tuple;
 
+import javax.annotation.Nonnull;
 import javax.measure.unit.SI;
 import java.util.HashMap;
 import java.util.Map;
@@ -44,15 +45,6 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
     public EnergyDTO battery;
 
     // Delegate MAS stuff
-    /* TODO: timeout for ant receiving -> imagine ant being sent out just at the end of the lifespan of a certain order
-       TODO:                           -> the order gets delivered and the intention ant never returns
-       TODO:                           -> this may break the system since it keeps waiting for the end to return.
-
-       NOTE: not entirely sure about the above remark, maybe the order lives long enough for that situation to possibly happen.
-
-       TODO: (possible) alternative    -> filter out orders which are currently in transit
-     */
-
     private delegateMasState state;
     private Map<ExplorationAnt, Boolean> explorationAnts;
     private Map<IntentionAnt, Boolean> intentionAnt; // Just one intention ant
@@ -104,7 +96,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
     public void initRoadPDP(RoadModel pRoadModel, PDPModel pPdpModel) {}
 
     @Override
-    protected void tickImpl(TimeLapse timeLapse) {
+    protected void tickImpl(@Nonnull TimeLapse timeLapse) {
         final RoadModel rm = getRoadModel();
         final PDPModel pdp = getPDPModel();
         final EnergyModel em = getEnergyModel();
@@ -146,6 +138,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
                         break;
                     }
                     spawnIntentionAnt(intention.first, intention.second);
+
                     // Clear all the exploration ants since they are outdated at this point
                     explorationAnts.clear();
                     state = delegateMasState.intentionAntReturned;
@@ -155,11 +148,6 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
             case intentionAntReturned: {
                 // If the intentionAnt has been cleared, the order has been delivered,
                 // and we need to start looking for a new one.
-                // TODO maybe remove this, legacy code
-                if (intentionAnt.isEmpty()) {
-                    state = delegateMasState.initialState;
-                    break;
-                }
 
                 Map.Entry<IntentionAnt, Boolean> entry = intentionAnt.entrySet().iterator().next();
                 // Ant has returned and has an approved reservation
@@ -167,7 +155,6 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
                     if (entry.getKey().destination instanceof Order) {
                         payload = Optional.of((Order) entry.getKey().destination);
                     } else if (entry.getKey().destination instanceof ChargingPoint) {
-                        System.out.println("Moving to charger");
                         chargingStatus = ChargingStatus.MoveToCharger;
                     }
 
@@ -183,7 +170,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
                 Map.Entry<IntentionAnt, Boolean> entry = intentionAnt.entrySet().iterator().next();
 
                 if (!payload.isPresent() && chargingStatus == ChargingStatus.Idle) {
-                    // The order has been delivered, go back to the initial state
+                    // The order has been delivered or the drone is fully charged, go back to the initial state
                     state = delegateMasState.initialState;
                     break;
                 }
@@ -200,7 +187,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
             }
             case spawnExplorationAnts: {
                 if (!payload.isPresent() && chargingStatus == ChargingStatus.Idle) {
-                    // The order has been delivered, go back to the initial state
+                    // The order has been delivered or the drone is fully charged, go back to the initial state
                     state = delegateMasState.initialState;
                     break;
                 }
@@ -230,7 +217,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
     private boolean reconsiderAction(Tuple<AntReceiver,Double> intention, TimeLapse timeLapse) {
         PDPModel pm = getPDPModel();
 
-        if (!payload.isPresent() && chargingStatus == ChargingStatus.Charging) {
+        if (chargingStatus == ChargingStatus.Charging) {
             return false;
         } else if (payload.isPresent() && pm.getParcelState(payload.get()) != PDPModel.ParcelState.AVAILABLE) {
             return false;
@@ -355,7 +342,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
      * Gets the maximum distance a drone could travel if flying at max speed.
      * @return The calculated distance.
      */
-    protected double getTravelCapacity() {
+    private double getTravelCapacity() {
         return SPEED_RANGE.getSpeed(1) * battery.getMaxCapacity();
     }
 
@@ -377,7 +364,9 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
     private void handlePickupAndDelivery(RoadModel rm, PDPModel pdp, TimeLapse timeLapse) {
         if (!payload.isPresent()) {
             return;
-        } else if (pdp.getContents(this).isEmpty()) {
+        }
+
+        if (pdp.getContents(this).isEmpty()) {
             moveToStore(rm, pdp, timeLapse);
         } else {
             moveToCustomer(rm, pdp, timeLapse);
@@ -409,7 +398,6 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
             pdp.deliver(this, order, timeLapse);
 
             payload = Optional.absent();
-//            chargingStatus = ChargingStatus.MoveToCharger;
         }
     }
 
@@ -418,13 +406,13 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
 
         if (!rm.getPosition(this).equals(chargingPoint.getLocation())) {
             rm.moveTo(this, chargingPoint.getLocation(), timeLapse);
-        } else if (!chargingPoint.dronePresent(this)) {
+        } else if (chargingPoint.dronePresent(this)) {
             // Only charge if there is a charger free
-            if (!chargingPoint.chargersOccupied(this)) {
-//                chargingPoint.reserveCharger(this);
-                chargingPoint.chargeDrone(this);
-                chargingStatus = ChargingStatus.Charging;
-            }
+            chargingPoint.chargeDrone(this);
+            chargingStatus = ChargingStatus.Charging;
+        } else {
+            // The drone was not reserved in the charging station, go back to idle
+            chargingStatus = ChargingStatus.Idle;
         }
     }
 
@@ -437,7 +425,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
         chargingStatus = ChargingStatus.Idle;
     }
 
-    public EnergyModel getEnergyModel() {
+    private EnergyModel getEnergyModel() {
         return energyModel.get();
     }
 
@@ -449,7 +437,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
             try {
                 explorationAnts.replace((ExplorationAnt) ant, true);
             } catch (Exception e) {
-                System.out.println("Exploration and dropped.");
+                System.out.println("Exploration ant dropped.");
             }
         } else if (ant instanceof IntentionAnt) {
             try {
@@ -490,6 +478,10 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
                 rm.removeObject(customer);
             }
         }
+    }
+
+    public String toString() {
+        return getDroneString();
     }
 
     private enum delegateMasState {
