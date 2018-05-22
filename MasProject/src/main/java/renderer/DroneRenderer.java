@@ -76,6 +76,7 @@ public class DroneRenderer extends CanvasRenderer.AbstractCanvasRenderer {
 
     // Show the information of the charging station in a separate window
     private void showChargingInfo(String status) {
+        // TODO add separate canvas with charging point info
         Display display = new Display();
         Shell shell = new Shell(display);
         shell.setBounds(10, 10, 500, 1000);
@@ -83,7 +84,9 @@ public class DroneRenderer extends CanvasRenderer.AbstractCanvasRenderer {
     }
 
     private void renderDrone(RoadUser user, GC gc, ViewPort vp, int xpx, int ypx, int r){
-        // TODO render the drone ID on the UI!
+        // TODO make ID with red background if drone is charging
+        // TODO Make id with green background if fully charged
+        // TODO Make id with orange background if not fully charged
         Drone d = (Drone) user;
         final PDPModel.VehicleState vs = pdpModel.getVehicleState(d);
         String text = determineStatus(d, vs);

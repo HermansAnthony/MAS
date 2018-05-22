@@ -103,7 +103,6 @@ public class DroneExperiment {
      * Main method
      */
     public static void main(String[] args) {
-//        final Optional<ExperimentResults> results;
         System.out.println("Creating the scenario...");
         Scenario scenario = createScenario();
         System.out.println("Scenario done...");
@@ -114,14 +113,13 @@ public class DroneExperiment {
                 // very useful for debugging these should not be used in production as
                 // these are not thread safe. Use the 'defaultHandler()' instead.
                 .addEventHandler(AddDepotEvent.class, AddDepotEvent.namedHandler())
-                .addEventHandler(AddParcelEvent.class, AddParcelEvent.namedHandler())
                 .addEventHandler(AddChargingPointEvent.class, AddChargingPointEvent.namedHandler())
                 .addEventHandler(AddOrderEvent.class, AddOrderEvent.namedHandler())
                 // There is no default handle for vehicle events, here a non functioning
                 // handler is added, it can be changed to add a custom vehicle to the
                 // simulator.
-                .addEventHandler(AddVehicleEvent.class, DroneLWHandler.INSTANCE)
-                .addEventHandler(AddVehicleEvent.class, DroneHWHandler.INSTANCE)
+                .addEventHandler(AddDroneEvent.class, DroneLWHandler.INSTANCE)
+//                .addEventHandler(AddDroneEvent.class, DroneHWHandler.INSTANCE)
                 .addEventHandler(TimeOutEvent.class, TimeOutEvent.ignoreHandler())
                 // Note: if you multi-agent system requires the aid of a model (e.g.
                 // CommModel) it can be added directly in the configuration. Models that
@@ -151,18 +149,7 @@ public class DroneExperiment {
                 // gather simulation results. The objects created by the post processor
                 // end up in the ExperimentResults object that is returned by the
                 // perform(..) method of Experiment.
-                // TODO make this work
-//                .usePostProcessor(new PostProcessor() {
-//                    @Override
-//                    public Object collectResults(Simulator sim, Experiment.SimArgs args) {
-//                        return null;
-//                    }
-//
-//                    @Override
-//                    public FailureStrategy handleFailure(Exception e, Simulator sim, Experiment.SimArgs args) {
-//                        return null;
-//                    }
-//                })
+                .usePostProcessor(new ExperimentPostProcessor())
 
                 // Adds the GUI just like it is added to a Simulator object.
 
@@ -173,17 +160,17 @@ public class DroneExperiment {
                 // you can see an overview of the supported options.
                 .perform();
 
-//        if (results.isPresent()) {
-//            for (final Experiment.SimulationResult sr : results.get().getResults()) {
-//                // The SimulationResult contains all information about a specific
-//                // simulation, the result object is the object created by the post
-//                // processor, a String in this case.
-//                System.out.println(
-//                        sr.getSimArgs().getRandomSeed() + " " + sr.getResultObject());
-//            }
-//        } else {
-//            throw new IllegalStateException("Experiment did not complete.");
-//        }
+        try {
+            for (final Experiment.SimulationResult sr : results.getResults()) {
+                // The SimulationResult contains all information about a specific
+                // simulation, the result object is the object created by the post
+                // processor, a String in this case.
+                System.out.println(
+                        sr.getSimArgs().getRandomSeed() + " " + sr.getResultObject());
+            }
+        } catch(Exception e) {
+            throw new IllegalStateException("Experiment did not complete.");
+        }
     }
 
     /**
@@ -201,7 +188,8 @@ public class DroneExperiment {
                 // Adds one depot.
                 .addEvent(AddDepotEvent.create(-1, storeLocation1))
                 .addEvent(AddDepotEvent.create(-1, storeLocation2))
-                .addEvent(AddVehicleEvent.create(-1, new DroneLW(speedDroneLW, capacityDroneLW, batteryDroneLW, chargingPointLocation).getDTO()))
+                .addEvent(AddDroneEvent.create(-1, new DroneLW(speedDroneLW, capacityDroneLW, batteryDroneLW, chargingPointLocation)))
+//                .addEvent(AddDroneEvent.create(-1, new DroneHW(speedDroneHW, capacityDroneHW, batteryDroneHW, chargingPointLocation)))
                 .addEvent(AddChargingPointEvent.create(-1, chargingPointLocation))
                 // Two add parcel events are added. They are announced at different
                 // times and have different time windows.
@@ -276,7 +264,7 @@ public class DroneExperiment {
                 .with(RoutePanel.builder().withPositionLeft())
                 .with(StatsPanel.builder())
                 .withResolution(new Double(resolution.x).intValue(), new Double(resolution.y).intValue())
-                .withTitleAppendix("Drone Demo - WIP");
+                .withTitleAppendix("Drone experiment - WIP");
 
         if (testing) {
             view = view.withAutoClose()
@@ -288,28 +276,19 @@ public class DroneExperiment {
         return view;
     }
 
-    enum DroneLWHandler implements TimedEventHandler<AddVehicleEvent> {
+    enum DroneLWHandler implements TimedEventHandler<AddDroneEvent> {
         INSTANCE {
             @Override
-            public void handleTimedEvent(AddVehicleEvent event, SimulatorAPI sim) {
+            public void handleTimedEvent(AddDroneEvent event, SimulatorAPI sim) {
                 sim.register(new DroneLW(speedDroneLW, capacityDroneLW, batteryDroneLW, chargingPointLocation));
             }
         }
     }
-    enum DroneHWHandler implements TimedEventHandler<AddVehicleEvent> {
-        INSTANCE {
-            @Override
-            public void handleTimedEvent(AddVehicleEvent event, SimulatorAPI sim) {
-                sim.register(new DroneHW(speedDroneHW, capacityDroneHW, batteryDroneHW, chargingPointLocation));
-            }
-        }
-    }
-    enum ChargingStationHandler implements TimedEventHandler<AddVehicleEvent> {
-        INSTANCE {
-            @Override
-            public void handleTimedEvent(AddVehicleEvent event, SimulatorAPI sim) {
-                sim.register(new ChargingPoint(chargingPointLocation, amountChargersLW, amountChargersHW));
-            }
-        }
-    }
+//    enum DroneHWHandler implements TimedEventHandler<AddDroneEvent> {
+//        INSTANCE {
+//            public void handleTimedEvent(AddDroneEvent event, SimulatorAPI sim) {
+//                sim.register(new DroneHW(speedDroneHW, capacityDroneHW, batteryDroneHW, chargingPointLocation));
+//            }
+//        }
+//    }
 }
