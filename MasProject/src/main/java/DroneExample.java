@@ -17,6 +17,8 @@ import pdp.Customer;
 import pdp.DroneHW;
 import pdp.DroneLW;
 import pdp.Order;
+import renderer.DroneRenderer;
+import renderer.MapRenderer;
 import util.Range;
 
 import javax.annotation.Nullable;

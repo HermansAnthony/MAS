@@ -1,3 +1,5 @@
+package renderer;
+
 import com.github.rinde.rinsim.core.model.DependencyProvider;
 import com.github.rinde.rinsim.core.model.ModelBuilder.AbstractModelBuilder;
 import energy.EnergyModel;
@@ -31,7 +33,7 @@ public class DroneRenderer extends CanvasRenderer.AbstractCanvasRenderer {
         energyModel = d;
     }
 
-    static DroneRenderer.Builder builder() { return new Builder(); }
+    public static DroneRenderer.Builder builder() { return new Builder(); }
 
     @Override
     public void renderStatic(GC gc, ViewPort vp) {
@@ -119,7 +121,7 @@ public class DroneRenderer extends CanvasRenderer.AbstractCanvasRenderer {
 
         private static final long serialVersionUID = -1772420262312399129L;
 
-        Builder() {
+        public Builder() {
             setDependencies(PlaneRoadModel.class, PDPModel.class, EnergyModel.class);
         }
 
