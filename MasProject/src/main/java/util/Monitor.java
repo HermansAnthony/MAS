@@ -8,16 +8,16 @@ public class Monitor {
     private static String outputDirectory = "logging";
     private static SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm:ss");
 
-    public Monitor(String _fileName){
+    public Monitor(String fileName){
 
         File directory = new File(outputDirectory);
         if (! directory.exists()){
             directory.mkdir();
         }
 
-        fileName = outputDirectory + "/" +  _fileName + ".txt";
+        this.fileName = outputDirectory + "/" +  fileName + ".txt";
         // Delete the file if it is already present
-        File tempFile = new File(fileName);
+        File tempFile = new File(this.fileName);
         if (tempFile.isFile()){
             tempFile.delete();
         }

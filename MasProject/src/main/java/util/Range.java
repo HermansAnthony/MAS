@@ -4,10 +4,10 @@ public class Range {
     private int low;
     private int high;
 
-    public Range(int _low, int _high) {
-        assert(_low <= _high);
-        low = _low;
-        high = _high;
+    public Range(int low, int high) {
+        assert(low <= high);
+        this.low = low;
+        this.high = high;
     }
 
     /**

@@ -7,8 +7,8 @@ import com.github.rinde.rinsim.geom.Point;
 public class Customer implements RoadUser {
     private Point location;
 
-    public Customer(Point loc) {
-        location = loc;
+    public Customer(Point location) {
+        this.location = location;
     }
 
     @Override
