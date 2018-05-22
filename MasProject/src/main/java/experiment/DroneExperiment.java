@@ -1,18 +1,13 @@
 package experiment;
 
-import com.github.rinde.rinsim.core.Simulator;
 import com.github.rinde.rinsim.core.SimulatorAPI;
-import com.github.rinde.rinsim.core.model.pdp.*;
-import com.github.rinde.rinsim.core.model.road.PlaneRoadModel;
+import com.github.rinde.rinsim.core.model.pdp.DefaultPDPModel;
+import com.github.rinde.rinsim.core.model.pdp.Depot;
+import com.github.rinde.rinsim.core.model.pdp.Parcel;
 import com.github.rinde.rinsim.core.model.road.RoadModelBuilders;
-import com.github.rinde.rinsim.core.model.time.TickListener;
-import com.github.rinde.rinsim.core.model.time.TimeLapse;
-import com.github.rinde.rinsim.core.model.time.TimeModel;
-import com.github.rinde.rinsim.examples.experiment.ExamplePostProcessor;
 import com.github.rinde.rinsim.experiment.Experiment;
 import com.github.rinde.rinsim.experiment.ExperimentResults;
 import com.github.rinde.rinsim.experiment.MASConfiguration;
-import com.github.rinde.rinsim.experiment.PostProcessor;
 import com.github.rinde.rinsim.geom.Point;
 import com.github.rinde.rinsim.pdptw.common.*;
 import com.github.rinde.rinsim.scenario.Scenario;
@@ -23,27 +18,16 @@ import com.github.rinde.rinsim.ui.View;
 import com.github.rinde.rinsim.ui.renderers.PlaneRoadModelRenderer;
 import com.github.rinde.rinsim.ui.renderers.RoadUserRenderer;
 import com.github.rinde.rinsim.util.TimeWindow;
-import com.google.common.base.Optional;
 import energy.ChargingPoint;
 import energy.DefaultEnergyModel;
-import org.apache.commons.math3.random.RandomGenerator;
-import org.eclipse.swt.graphics.RGB;
-import org.jetbrains.annotations.NotNull;
-import pdp.*;
-import util.Range;
+import pdp.Customer;
+import pdp.DroneHW;
+import pdp.DroneLW;
 import renderer.DroneRenderer;
 import renderer.MapRenderer;
+import util.Range;
 
-import javax.annotation.Nullable;
-import javax.imageio.ImageIO;
 import javax.measure.unit.SI;
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Scanner;
 
 
 public class DroneExperiment {
