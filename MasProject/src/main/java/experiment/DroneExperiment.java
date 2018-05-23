@@ -43,7 +43,7 @@ public class DroneExperiment {
     private static List<Point> storeLocations;
 
     // Map related properties
-    private static Point resolution = new Point(1120.0,956.0);
+    private static Point resolutionImage = new Point(1120.0,956.0);
 
     // Drone related properties
     private static final Range speedDroneLW = new Range(17,22);
@@ -198,7 +198,7 @@ public class DroneExperiment {
             .with(TimeLinePanel.builder())
             .with(StatsPanel.builder())
             .with(ChargingPointPanel.builder())
-            .withResolution(new Double(resolution.x).intValue(), new Double(resolution.y).intValue())
+            .withResolution(new Double(resolutionImage.x).intValue(), new Double(resolutionImage.y).intValue())
             .withTitleAppendix("Drone experiment");
 
         if (testing) {
