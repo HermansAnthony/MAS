@@ -23,6 +23,7 @@ import energy.DefaultEnergyModel;
 import pdp.Customer;
 import pdp.DroneHW;
 import pdp.DroneLW;
+import renderer.ChargingPointPanel;
 import renderer.DroneRenderer;
 import renderer.MapRenderer;
 import util.Range;
@@ -247,6 +248,7 @@ public class DroneExperiment {
                 .with(RouteRenderer.builder())
                 .with(RoutePanel.builder().withPositionLeft())
                 .with(StatsPanel.builder())
+                .with(ChargingPointPanel.builder())
                 .withResolution(new Double(resolution.x).intValue(), new Double(resolution.y).intValue())
                 .withTitleAppendix("Drone experiment - WIP");
 

@@ -88,9 +88,8 @@ public class DroneRenderer extends CanvasRenderer.AbstractCanvasRenderer {
         if (chargeStatus == 0) return SWT.COLOR_DARK_GREEN;
         if (chargeStatus == 1) return SWT.COLOR_DARK_RED;
         return SWT.COLOR_DARK_CYAN;
-
-
     }
+
     private void renderDrone(RoadUser user, GC gc, ViewPort vp, int xpx, int ypx, int r){
         Drone d = (Drone) user;
         final PDPModel.VehicleState vs = pdpModel.getVehicleState(d);
