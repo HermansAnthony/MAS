@@ -2,7 +2,6 @@ package renderer;
 
 import com.github.rinde.rinsim.core.model.DependencyProvider;
 import com.github.rinde.rinsim.core.model.ModelBuilder;
-import com.github.rinde.rinsim.core.model.road.PlaneRoadModel;
 import com.github.rinde.rinsim.geom.Point;
 import com.github.rinde.rinsim.ui.renderers.CanvasRenderer;
 import com.github.rinde.rinsim.ui.renderers.ViewPort;
@@ -13,19 +12,17 @@ import org.eclipse.swt.graphics.Image;
 
 public class MapRenderer extends CanvasRenderer.AbstractCanvasRenderer {
 
-    final PlaneRoadModel pdpModel;
     final String map;
 
-    public MapRenderer(PlaneRoadModel p, String m) {
-        pdpModel = p;
-        map = m;
+    private MapRenderer(String map) {
+        this.map = map;
     }
 
     public static MapRenderer.Builder builder(String map) { return new MapRenderer.Builder(map); }
 
     @Override
     public void renderStatic(GC gc, ViewPort vp) {
-        Image mapImage = new Image(gc.getDevice(), map);
+        Image mapImage = new Image(gc.getDevice(), getClass().getResourceAsStream(map));
         gc.drawImage(mapImage, 0, 0);
     }
 
@@ -44,15 +41,13 @@ public class MapRenderer extends CanvasRenderer.AbstractCanvasRenderer {
         private static final long serialVersionUID = -1772420262312399129L;
         private final String map;
 
-        Builder(String m) {
-            setDependencies(PlaneRoadModel.class);
-            map = m;
+        Builder(String map) {
+            this.map = map;
         }
 
         @Override
         public MapRenderer build(DependencyProvider dependencyProvider) {
-            final PlaneRoadModel pm = dependencyProvider.get(PlaneRoadModel.class);
-            return new MapRenderer(null, map);
+            return new MapRenderer(map);
         }
     }
 

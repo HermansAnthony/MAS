@@ -28,9 +28,8 @@ import javax.annotation.Nullable;
 import javax.imageio.ImageIO;
 import javax.measure.unit.SI;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
@@ -38,7 +37,7 @@ import java.util.Scanner;
 
 public class DroneExample {
 
-    private static final String map = "target/classes/leuven.png";
+    private static final String map = "/leuven.png";
 
     private static final int endTime = 60000;
 
@@ -66,7 +65,7 @@ public class DroneExample {
     private static final Point chargingPointLocation = new Point(2500,2500);
 
     private static List<Point> storeLocations;
-    private static Point resolution;
+    private static Point resolutionImage;
 
 
     /**
@@ -77,7 +76,7 @@ public class DroneExample {
      */
     public static void main(@Nullable String[] args) {
         loadResolutionImage(map);
-        loadStoreLocations("src/main/resources/stores.csv");
+        loadStoreLocations("/stores.csv");
 
         run(false, endTime);
     }
@@ -174,8 +173,8 @@ public class DroneExample {
             .with(DroneRenderer.builder())
             .with(MapRenderer.builder(map))
             .with(ChargingPointPanel.builder())
-            .withResolution(new Double(resolution.x).intValue(), new Double(resolution.y).intValue())
-            .withTitleAppendix("Drone Demo - WIP");
+            .withResolution(new Double(resolutionImage.x).intValue(), new Double(resolutionImage.y).intValue())
+            .withTitleAppendix("Drone Demo");
 
         if (testing) {
             view = view.withAutoClose()
@@ -188,15 +187,15 @@ public class DroneExample {
 
 
     /**
-     * Load the resolution of the given image.
+     * Load the resolutionImage of the given image.
      * @param filename the image file.
      */
     private static void loadResolutionImage(String filename) {
         try {
-            BufferedImage bufferedImage = ImageIO.read(new File(filename));
-            resolution = new Point(bufferedImage.getWidth(), bufferedImage.getHeight());
+            BufferedImage bufferedImage = ImageIO.read(DroneExample.class.getResource(filename));
+            resolutionImage = new Point(bufferedImage.getWidth(), bufferedImage.getHeight());
         } catch (IOException e) {
-            resolution = new Point(800,600);
+            resolutionImage = new Point(1120.0,956.0);
         }
     }
 
@@ -207,14 +206,16 @@ public class DroneExample {
     private static void loadStoreLocations(String filename) {
         storeLocations = new ArrayList<>();
         try {
-            Scanner scanner = new Scanner(new File(filename));
+            InputStream in = DroneExample.class.getResourceAsStream(filename);
+            Scanner scanner = new Scanner(in);
             scanner.useDelimiter("[,\n]");
             while (scanner.hasNext()) {
                 storeLocations.add(new Point(new Double(scanner.next()), new Double(scanner.next())));
             }
             scanner.close();
-        } catch (FileNotFoundException e) {
-            System.err.println("Could not read csv file with store locations.");
+            in.close();
+        } catch (IOException e) {
+            System.err.println("Could not read store locations from csv file.");
         }
     }
 }

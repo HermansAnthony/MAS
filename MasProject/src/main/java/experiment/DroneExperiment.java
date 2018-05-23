@@ -30,8 +30,8 @@ import renderer.MapRenderer;
 import util.Range;
 
 import javax.measure.unit.SI;
-import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
@@ -73,6 +73,7 @@ public class DroneExperiment {
     private static final int SEED_ORDERS = 0;
     private static final int MAX_X = 5000;
     private static final int MAX_Y = 5000;
+    private static final String map = "/leuven.png";
 
     private DroneExperiment() {}
 
@@ -80,7 +81,7 @@ public class DroneExperiment {
      * Main method
      */
     public static void main(String[] args) {
-        loadStoreLocations("src/main/resources/stores.csv");
+        loadStoreLocations("/stores.csv");
         Scenario scenario = createScenario();
 
         ExperimentResults results = Experiment.builder()
@@ -192,7 +193,7 @@ public class DroneExperiment {
                 .withImageAssociation(
                     DroneHW.class, "/droneHW-32.png"))
             .with(DroneRenderer.builder())
-            .with(MapRenderer.builder("target/classes/leuven.png"))
+            .with(MapRenderer.builder(map))
             .with(TimeLinePanel.builder())
             .with(StatsPanel.builder())
             .with(ChargingPointPanel.builder())
@@ -217,14 +218,16 @@ public class DroneExperiment {
     private static void loadStoreLocations(String filename) {
         storeLocations = new ArrayList<>();
         try {
-            Scanner scanner = new Scanner(new File(filename));
+            InputStream in = DroneExperiment.class.getResourceAsStream(filename);
+            Scanner scanner = new Scanner(in);
             scanner.useDelimiter("[,\n]");
             while (scanner.hasNext()) {
                 storeLocations.add(new Point(new Double(scanner.next()), new Double(scanner.next())));
             }
             scanner.close();
-        } catch (FileNotFoundException e) {
-            System.err.println("Could not read csv file with store locations.");
+            in.close();
+        } catch (IOException e) {
+            System.err.println("Could not read store locations from csv file.");
         }
     }
 }
