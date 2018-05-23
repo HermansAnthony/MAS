@@ -2,7 +2,10 @@ package experiment;
 
 import com.github.rinde.rinsim.core.model.pdp.DefaultPDPModel;
 import com.github.rinde.rinsim.core.model.pdp.Depot;
+import com.github.rinde.rinsim.core.model.pdp.Parcel;
+import com.github.rinde.rinsim.core.model.pdp.ParcelDTO;
 import com.github.rinde.rinsim.core.model.road.RoadModelBuilders;
+import com.github.rinde.rinsim.core.model.time.TimeModel;
 import com.github.rinde.rinsim.experiment.Experiment;
 import com.github.rinde.rinsim.experiment.ExperimentResults;
 import com.github.rinde.rinsim.experiment.MASConfiguration;
@@ -13,8 +16,11 @@ import com.github.rinde.rinsim.scenario.TimeOutEvent;
 import com.github.rinde.rinsim.ui.View;
 import com.github.rinde.rinsim.ui.renderers.PlaneRoadModelRenderer;
 import com.github.rinde.rinsim.ui.renderers.RoadUserRenderer;
+import com.github.rinde.rinsim.util.TimeWindow;
 import energy.ChargingPoint;
 import energy.DefaultEnergyModel;
+import org.apache.commons.math3.random.MersenneTwister;
+import org.apache.commons.math3.random.RandomGenerator;
 import pdp.Customer;
 import pdp.DroneHW;
 import pdp.DroneLW;
@@ -31,6 +37,7 @@ import java.util.Scanner;
 
 
 public class DroneExperiment {
+    private static final long TICK_LENGTH = 250;
     // Store related properties
     private static List<Point> storeLocations;
 
@@ -59,7 +66,12 @@ public class DroneExperiment {
     private static final int maxCapacity = 9000;
 
     private static final Point chargingPointLocation = new Point(2500,2500);
-    private static final long simulationLength = 100000;
+    private static final long simulationLength = 1000000; // TODO adjust this to amount of ticks, and extend simulation duration (currently 16:40 minutes)
+
+
+    private static final int SEED_ORDERS = 0;
+    private static final int MAX_X = 5000;
+    private static final int MAX_Y = 5000;
 
     private DroneExperiment() {}
 
@@ -74,14 +86,15 @@ public class DroneExperiment {
             .addConfiguration(MASConfiguration.builder()
                 .addEventHandler(AddDepotEvent.class, AddDepotEvent.namedHandler())
                 .addEventHandler(AddChargingPointEvent.class, AddChargingPointEvent.defaultHandler())
-                .addEventHandler(AddParcelEvent.class, AddOrderEvent.defaultHandler())
+                .addEventHandler(AddOrderEvent.class, AddOrderEvent.defaultHandler())
                 .addEventHandler(AddDroneEvent.class, AddDroneEvent.defaultHandler())
                 .addEventHandler(TimeOutEvent.class, TimeOutEvent.ignoreHandler())
                 // Note: if you multi-agent system requires the aid of a model (e.g.
                 // CommModel) it can be added directly in the configuration. Models that
                 // are only used for the solution side should not be added in the
                 // scenario as they are not part of the problem.
-                .addModel(StatsTracker.builder()).build())
+                .addModel(StatsTracker.builder())
+                .addModel(TimeModel.builder().withTickLength(TICK_LENGTH)).build())
             .addScenario(scenario)
             .repeat(1)
             .withRandomSeed(0)
@@ -110,55 +123,56 @@ public class DroneExperiment {
      * @return A newly constructed scenario.
      */
     static Scenario createScenario() {
-        // In essence a scenario is just a list of events. The events must implement
-        // the TimedEvent interface. You are free to construct any object as a
-        // TimedEvent but keep in mind that implementations should be immutable.
-
         Scenario.Builder scenarioBuilder = Scenario.builder();
 
-        // TODO manually generate order events and add them to the scenario?
-//        ScenarioGenerator generator = ScenarioGenerator.builder()
-//            .parcels(OrderGenerator.builder()
-//                .pickupDurations(StochasticSuppliers.constant(5L))
-//                .deliveryDurations(StochasticSuppliers.constant(5L))
-//                .locations(Locations.builder().buildFixed(storeLocations))
-//                .neededCapacities(StochasticSuppliers.uniformInt(1000, 9000))
-//                .serviceDurations(StochasticSuppliers.uniformLong(10000,60000)) // TODO fill in these values more thoroughly
-//                .announceTimes(TimeSeries.uniform(simulationLength, 10000, 20)) // TODO experimental values
-////                .timeWindows()
-//                .build())
-//            .build();
-
-
+        // Creation of all objects for the scenario
+        RandomGenerator rng = new MersenneTwister();
+        rng.setSeed(SEED_ORDERS);
+        for (int i = 0; i < simulationLength; i+=TICK_LENGTH) {
+            if (rng.nextDouble() < orderProbability) {
+                Point location = new Point(rng.nextDouble() * MAX_X, rng.nextDouble() * MAX_Y);
+                int randomStore = rng.nextInt(storeLocations.size());
+                ParcelDTO orderData = Parcel.builder(storeLocations.get(randomStore),location)
+                    .serviceDuration(serviceDuration)
+                    .neededCapacity(1000 + rng.nextInt(maxCapacity - 1000)) // Capacity is measured in grams
+                    .deliveryDuration(5)
+                    .pickupDuration(5)
+                    .orderAnnounceTime(i)
+                    .pickupTimeWindow(TimeWindow.create(i, i+1000000)) // TODO verify/fine tuning
+                    .deliveryTimeWindow(TimeWindow.always())
+                    .buildDTO();
+                scenarioBuilder.addEvent(AddOrderEvent.create(orderData));
+            }
+        }
         for (Point location : storeLocations) {
             scenarioBuilder.addEvent(AddDepotEvent.create(-1, location));
         }
-
         for (int i = 0; i < amountDroneLW; i++) {
             scenarioBuilder.addEvent(AddDroneEvent
                 .create(new DroneLW(speedDroneLW, capacityDroneLW, batteryDroneLW, chargingPointLocation)));
         }
-
         for (int i = 0; i < amountDroneHW; i++) {
             scenarioBuilder.addEvent(AddDroneEvent
                 .create(new DroneHW(speedDroneHW, capacityDroneHW, batteryDroneHW, chargingPointLocation)));
         }
-
         scenarioBuilder.addEvent(AddChargingPointEvent.create(chargingPointLocation, amountChargersLW, amountChargersHW));
 
-        return scenarioBuilder
-            .addEvent(TimeOutEvent.create(simulationLength))
-            .scenarioLength(simulationLength)
-            .addModel(RoadModelBuilders.plane()
+        // Addition of models
+        scenarioBuilder.addModel(RoadModelBuilders.plane()
                 .withMinPoint(new Point(0,0))
-                .withMaxPoint(new Point(5000,5000))
+                .withMaxPoint(new Point(MAX_X,MAX_Y))
                 .withDistanceUnit(SI.METER)
                 .withSpeedUnit(SI.METERS_PER_SECOND)
                 .withMaxSpeed(50))
             .addModel(DefaultPDPModel.builder())
-            .addModel(DefaultEnergyModel.builder())
-            .setStopCondition(StatsStopConditions.timeOutEvent())
-            .build();
+            .addModel(DefaultEnergyModel.builder());
+
+        // Time and timeouts of scenario
+        scenarioBuilder.scenarioLength(simulationLength)
+            .addEvent(TimeOutEvent.create(simulationLength))
+            .setStopCondition(StatsStopConditions.timeOutEvent());
+
+        return scenarioBuilder.build();
     }
 
     // TODO avoid code duplication
@@ -179,11 +193,9 @@ public class DroneExperiment {
             .with(DroneRenderer.builder())
             .with(MapRenderer.builder("target/classes/leuven.png"))
             .with(TimeLinePanel.builder())
-            .with(RouteRenderer.builder())
-            .with(RoutePanel.builder().withPositionLeft())
             .with(StatsPanel.builder())
             .withResolution(new Double(resolution.x).intValue(), new Double(resolution.y).intValue())
-            .withTitleAppendix("Drone experiment - WIP");
+            .withTitleAppendix("Drone experiment");
 
         if (testing) {
             view = view.withAutoClose()

@@ -3,7 +3,6 @@ package experiment;
 import com.github.rinde.rinsim.core.SimulatorAPI;
 import com.github.rinde.rinsim.core.model.pdp.Parcel;
 import com.github.rinde.rinsim.core.model.pdp.ParcelDTO;
-import com.github.rinde.rinsim.pdptw.common.AddParcelEvent;
 import com.github.rinde.rinsim.scenario.TimedEvent;
 import com.github.rinde.rinsim.scenario.TimedEventHandler;
 import pdp.Customer;
@@ -41,7 +40,7 @@ public class AddOrderEvent implements TimedEvent {
      * {@link AddOrderEvent} that is received.
      * @return The default handler.
      */
-    public static TimedEventHandler<AddParcelEvent> defaultHandler() {
+    public static TimedEventHandler<AddOrderEvent> defaultHandler() {
         return Handler.INSTANCE;
     }
 
@@ -50,10 +49,10 @@ public class AddOrderEvent implements TimedEvent {
         return time;
     }
 
-    enum Handler implements TimedEventHandler<AddParcelEvent> {
+    enum Handler implements TimedEventHandler<AddOrderEvent> {
         INSTANCE {
             @Override
-            public void handleTimedEvent(AddParcelEvent event, SimulatorAPI sim) {
+            public void handleTimedEvent(AddOrderEvent event, SimulatorAPI sim) {
                 sim.register(new Customer(event.getParcelDTO().getDeliveryLocation()));
                 sim.register(new Order(event.getParcelDTO()));
             }
