@@ -13,8 +13,12 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
+import pdp.Drone;
 import pdp.DroneHW;
 import pdp.DroneLW;
+import util.Tuple;
+
+import java.util.List;
 
 /**
  * A charging point panel that gives a live view of the current statistics of the charging point (including occupation etc).
@@ -25,7 +29,9 @@ public final class ChargingPointPanel extends AbstractModelVoid
 
     private static final int PREFERRED_SIZE = 225;
     private final EnergyModel energyModel;
+    private boolean chargersInitialized;
     Optional<Table> statsTable;
+    Optional<Table> chargeStatsTable;
 
     /**
      * Create a new instance using the specified {@link ChargingPointPanel} which
@@ -35,6 +41,7 @@ public final class ChargingPointPanel extends AbstractModelVoid
     public ChargingPointPanel(EnergyModel energyModel) {
         this.energyModel = energyModel;
         this.statsTable = Optional.absent();
+        this.chargersInitialized = false;
     }
 
     @Override
@@ -51,54 +58,57 @@ public final class ChargingPointPanel extends AbstractModelVoid
         table.setHeaderVisible(true);
         table.setLinesVisible(true);
 
-        final String[] statsTitles = new String[] {"ChargingPoint", "Current occupation", "Reserved occupation"};
+        final String[] statsTitles = new String[] {"Drone", "Current occupation", "Reserved occupation"};
         for (int i = 0; i < statsTitles.length; i++) {
             final TableColumn column = new TableColumn(table, SWT.NONE);
             column.setText(statsTitles[i]);
             table.getColumn(i).pack();
         }
-        final TableItem firstRow = new TableItem(table, 0);
-        firstRow.setText("Lightweight drone");
-//        System.out.println(String.valueOf(chargingPoint.getOccupationPercentage(DroneLW.class, false)));
-//        firstRow.setText(2, String.valueOf(chargingPoint.getOccupationPercentage(DroneLW.class, true)));
-        final TableItem secondRow = new TableItem(table, 1);
-        secondRow.setText("Heavyweight drone");
-//        secondRow.setText(1, String.valueOf(chargingPoint.getOccupationPercentage(DroneHW.class, false)));
-//        secondRow.setText(2, String.valueOf(chargingPoint.getOccupationPercentage(DroneHW.class, true)));
-//        final StatisticsDTO stats = statsTracker.getStatistics();
-//        final Field[] fields = stats.getClass().getFields();
-//        for (final Field f : fields) {
-//            final TableItem ti = new TableItem(table, 0);
-//            ti.setText(0, f.getName());
-//            try {
-//                ti.setText(1, f.get(stats).toString());
-//            } catch (final IllegalArgumentException | IllegalAccessException e) {
-//                ti.setText(1, e.getMessage());
-//            }
-//        }
-//        for (int i = 0; i < statsTitles.length; i++) {
-//            table.getColumn(i).pack();
-//        }
 
-//        statsTracker.getEventAPI().addListener(new Listener() {
-//                                                   @Override
-//                                                   public void handleEvent(Event e) {
-//                                                       verify(e instanceof StatsEvent);
-//                                                       final StatsEvent se = (StatsEvent) e;
-//                                                       if (eventList.getDisplay().isDisposed()) {
-//                                                           return;
-//                                                       }
-//                                                       eventList.getDisplay().asyncExec(new Runnable() {
-//                                                           @Override
-//                                                           public void run() {
-//                                                               final TableItem ti = new TableItem(eventList, 0);
-//                                                               ti.setText(0, Long.toString(se.getTime()));
-//                                                               ti.setText(1, Long.toString(se.getTardiness()));
-//                                                           }
-//                                                       });
-//                                                   }
-//                                               }, StatsProvider.EventTypes.PICKUP_TARDINESS,
-//                StatsProvider.EventTypes.DELIVERY_TARDINESS);
+        final TableItem firstRow = new TableItem(table, 0);
+        firstRow.setText("LW");
+        final TableItem secondRow = new TableItem(table, 1);
+        secondRow.setText("HW");
+
+        final Table secondTable = new Table(parent, SWT.MULTI | SWT.FULL_SELECTION
+            | SWT.V_SCROLL | SWT.H_SCROLL);
+        chargeStatsTable = Optional.of(secondTable);
+        secondTable.setHeaderVisible(true);
+//        secondTable.setLinesVisible(true); TODO don't really visualize lines?
+        final String[] titles = new String[] {"ChargerID", "Occupation"};
+        for (int i = 0; i < titles.length; i++) {
+            final TableColumn column = new TableColumn(secondTable, SWT.NONE);
+            column.setText(titles[i]);
+        }
+        for (int i = 0; i < titles.length; i++) {
+            secondTable.getColumn(i).pack();
+        }
+    }
+
+    private void setOccupationStats(ChargingPoint chargingPoint){
+        statsTable.get().getItem(0).setText(1, String.valueOf(chargingPoint.getOccupationPercentage(DroneLW.class, false)*100)+'%');
+        statsTable.get().getItem(0).setText(2, String.valueOf(chargingPoint.getOccupationPercentage(DroneLW.class, true)*100)+'%');
+        statsTable.get().getItem(1).setText(1, String.valueOf(chargingPoint.getOccupationPercentage(DroneHW.class, false)*100)+'%');
+        statsTable.get().getItem(1).setText(2, String.valueOf(chargingPoint.getOccupationPercentage(DroneHW.class, true)*100)+'%');
+    }
+
+    private void setStats(List<Tuple<Drone, Boolean>> chargers, int index){
+        for (Tuple<Drone, Boolean> entry : chargers){
+            String droneID = "-";
+            String chargeID = String.valueOf(index);
+            if (entry != null){
+                if (entry.second) droneID = entry.first.getDroneString();
+            }
+            chargeStatsTable.get().getItem(index).setText(0, chargeID);
+            chargeStatsTable.get().getItem(index).setText(1, droneID);
+            index++;
+        }
+    }
+    private void setChargerStats(ChargingPoint chargingPoint){
+        List<Tuple<Drone, Boolean>> chargersLW =  chargingPoint.getChargeStations(DroneLW.class);
+        List<Tuple<Drone, Boolean>> chargersHW =  chargingPoint.getChargeStations(DroneHW.class);
+        setStats(chargersLW, 0);
+        setStats(chargersHW, chargersLW.size());
     }
 
     @Override
@@ -122,6 +132,11 @@ public final class ChargingPointPanel extends AbstractModelVoid
                 || statsTable.get().getDisplay().isDisposed()) {
             return;
         }
+        // Init the rows of the chargers only once
+        if (energyModel.getChargingPoint() != null && !chargersInitialized){
+            for (int i = 0; i < 10; i++) {new TableItem(chargeStatsTable.get(), i);}
+            this.chargersInitialized = true;
+        }
         statsTable.get().getDisplay().syncExec(new Runnable() {
             @Override
             public void run() {
@@ -130,10 +145,8 @@ public final class ChargingPointPanel extends AbstractModelVoid
                 }
                 ChargingPoint chargingPoint = energyModel.getChargingPoint();
                 if (chargingPoint == null){return;}
-                statsTable.get().getItem(0).setText(1, String.valueOf(chargingPoint.getOccupationPercentage(DroneLW.class, false)*100)+'%');
-                statsTable.get().getItem(0).setText(2, String.valueOf(chargingPoint.getOccupationPercentage(DroneLW.class, true)*100)+'%');
-                statsTable.get().getItem(1).setText(1, String.valueOf(chargingPoint.getOccupationPercentage(DroneHW.class, false)*100)+'%');
-                statsTable.get().getItem(1).setText(2, String.valueOf(chargingPoint.getOccupationPercentage(DroneHW.class, true)*100)+'%');
+                setOccupationStats(chargingPoint);
+                setChargerStats(chargingPoint);
             }
         });
     }

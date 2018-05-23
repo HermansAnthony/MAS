@@ -95,6 +95,10 @@ public class ChargingPoint implements AntReceiver, RoadUser, EnergyUser, TickLis
         return ((double) stream.count()) / chargers.get(droneClass).size();
     }
 
+    public List<Tuple<Drone, Boolean>> getChargeStations(Class Drone){
+        return chargers.get(Drone);
+    }
+
     public boolean dronePresent(Drone drone) {
         return chargers.get(drone.getClass()).stream()
             .filter(Objects::nonNull)

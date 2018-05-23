@@ -10,9 +10,10 @@ import com.github.rinde.rinsim.ui.renderers.CanvasRenderer;
 import com.github.rinde.rinsim.ui.renderers.ViewPort;
 import energy.EnergyModel;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Color;
+import org.eclipse.swt.graphics.Device;
 import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.widgets.Display;
-import org.eclipse.swt.widgets.Shell;
 import pdp.Drone;
 import pdp.DroneHW;
 import pdp.DroneLW;
@@ -44,9 +45,6 @@ public class DroneRenderer extends CanvasRenderer.AbstractCanvasRenderer {
     public void renderDynamic(GC gc, ViewPort vp, long time) {
         final int r = 1;
         final Map<RoadUser, Point> objects = rm.getObjectsAndPositions();
-//        System.out.println(energyModel); // TODO fix this dependency mess 
-//        String status = energyModel.getStatus();
-//        showChargingInfo(status);
         synchronized (objects) {
             for (final Map.Entry<RoadUser, Point> entry : objects.entrySet()) {
                 final Point p = entry.getValue();
@@ -74,20 +72,16 @@ public class DroneRenderer extends CanvasRenderer.AbstractCanvasRenderer {
         return text;
     }
 
-    // Show the information of the charging station in a separate window
-    private void showChargingInfo(String status) {
-        // TODO add separate canvas with charging point info
-        Display display = new Display();
-        Shell shell = new Shell(display);
-        shell.setBounds(10, 10, 500, 1000);
-        shell.setText(status);
-    }
-
-    private int getChargeColor(Drone drone){
+    private Color getChargeColor(Drone drone){
         final int chargeStatus = drone.getChargingStatus();
-        if (chargeStatus == 0) return SWT.COLOR_DARK_GREEN;
-        if (chargeStatus == 1) return SWT.COLOR_DARK_RED;
-        return SWT.COLOR_DARK_CYAN;
+        Device device = Display.getCurrent();
+        if (chargeStatus == 0) return new Color(device, 255,140,0);
+        if (chargeStatus == 1) return new Color(device, 21, 82, 0);
+        if (chargeStatus == 2) return new Color(device, 174,202,0);
+        if (chargeStatus == 3) return new Color(device, 198,165,0);
+        if (chargeStatus == 4) return new Color(device, 194,104,0);
+        if (chargeStatus == 5) return new Color(device, 191,45,0);
+        return new Color(device, 0,0,0);
     }
 
     private void renderDrone(RoadUser user, GC gc, ViewPort vp, int xpx, int ypx, int r){
@@ -102,9 +96,9 @@ public class DroneRenderer extends CanvasRenderer.AbstractCanvasRenderer {
                 xpx - vp.scale(r), ypx - vp.scale(r),
                 2 * vp.scale(r), 2 * vp.scale(r));
         String droneInfo = Integer.toString(d.getID());
-        int chargeStatus = getChargeColor(d);
+        Color chargeColor = getChargeColor(d);
         final org.eclipse.swt.graphics.Point nameExtent = gc.textExtent(droneInfo);
-        gc.setBackground(gc.getDevice().getSystemColor(chargeStatus));
+        gc.setBackground(chargeColor);
         gc.fillRoundRectangle(xpx + offsetX - nameExtent.x / 2, ypx - 20 - nameExtent.y / 2,
                 nameExtent.x + 2, nameExtent.y + 2, 5,
                 5);
