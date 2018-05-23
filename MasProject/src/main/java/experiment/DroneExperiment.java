@@ -181,8 +181,8 @@ public class DroneExperiment {
                 .with(MapRenderer.builder("target/classes/leuven.png"))
                 .with(TimeLinePanel.builder())
                 .with(RouteRenderer.builder())
-                .with(RoutePanel.builder().withPositionLeft())
-                .with(StatsPanel.builder())
+//                .with(RoutePanel.builder().withPositionLeft())
+//                .with(StatsPanel.builder())
                 .with(ChargingPointPanel.builder())
                 .withResolution(new Double(resolution.x).intValue(), new Double(resolution.y).intValue())
                 .withTitleAppendix("Drone experiment - WIP");

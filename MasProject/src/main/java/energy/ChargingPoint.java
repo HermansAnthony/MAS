@@ -87,7 +87,7 @@ public class ChargingPoint implements AntReceiver, RoadUser, EnergyUser, TickLis
         return !chargers.get(droneClass).contains(null);
     }
 
-    private double occupationPercentage(Class droneClass, boolean includeReservations) {
+    public double getOccupationPercentage(Class droneClass, boolean includeReservations) {
         Stream<Tuple<Drone, Boolean>> stream = chargers.get(droneClass).stream().filter(Objects::nonNull);
         if (!includeReservations) {
             stream = stream.filter(o -> o.second);
@@ -155,7 +155,7 @@ public class ChargingPoint implements AntReceiver, RoadUser, EnergyUser, TickLis
         if (ant instanceof ExplorationAnt) {
 
             ExplorationAnt explorationAnt = (ExplorationAnt) ant;
-            explorationAnt.setChargingPointOccupation(this.occupationPercentage(ant.getPrimaryAgent().getClass(), true));
+            explorationAnt.setChargingPointOccupation(this.getOccupationPercentage(ant.getPrimaryAgent().getClass(), true));
             explorationAnt.setSecondaryAgent(this);
 
         } else if (ant instanceof IntentionAnt) {
@@ -183,8 +183,8 @@ public class ChargingPoint implements AntReceiver, RoadUser, EnergyUser, TickLis
     @Override
     public String getDescription() {
         return "ChargingPoint - location: " + location + ", occupation: "
-            + occupationPercentage(DroneLW.class, true) * 100 + "% lightweight & "
-            + occupationPercentage(DroneHW.class, true) * 100 + "% heavyweight";
+            + getOccupationPercentage(DroneLW.class, true) * 100 + "% lightweight & "
+            + getOccupationPercentage(DroneHW.class, true) * 100 + "% heavyweight";
     }
 
     @Override
