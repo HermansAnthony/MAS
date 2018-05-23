@@ -74,6 +74,7 @@ public class DroneExperiment {
     private static final int MAX_X = 5000;
     private static final int MAX_Y = 5000;
     private static final String map = "/leuven.png";
+//    private static final String map = "/leuven828.png";
 
     private DroneExperiment() {}
 
