@@ -20,6 +20,6 @@ public class ExplorationAnt extends Ant {
     }
 
     public enum AntDestination {
-        Order, ChargingPoint;
+        Order, ChargingPoint
     }
 }

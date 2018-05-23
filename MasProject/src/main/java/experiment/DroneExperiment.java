@@ -1,9 +1,7 @@
 package experiment;
 
-import com.github.rinde.rinsim.core.SimulatorAPI;
 import com.github.rinde.rinsim.core.model.pdp.DefaultPDPModel;
 import com.github.rinde.rinsim.core.model.pdp.Depot;
-import com.github.rinde.rinsim.core.model.pdp.Parcel;
 import com.github.rinde.rinsim.core.model.road.RoadModelBuilders;
 import com.github.rinde.rinsim.experiment.Experiment;
 import com.github.rinde.rinsim.experiment.ExperimentResults;
@@ -11,13 +9,10 @@ import com.github.rinde.rinsim.experiment.MASConfiguration;
 import com.github.rinde.rinsim.geom.Point;
 import com.github.rinde.rinsim.pdptw.common.*;
 import com.github.rinde.rinsim.scenario.Scenario;
-import com.github.rinde.rinsim.scenario.StopConditions;
 import com.github.rinde.rinsim.scenario.TimeOutEvent;
-import com.github.rinde.rinsim.scenario.TimedEventHandler;
 import com.github.rinde.rinsim.ui.View;
 import com.github.rinde.rinsim.ui.renderers.PlaneRoadModelRenderer;
 import com.github.rinde.rinsim.ui.renderers.RoadUserRenderer;
-import com.github.rinde.rinsim.util.TimeWindow;
 import energy.ChargingPoint;
 import energy.DefaultEnergyModel;
 import pdp.Customer;
@@ -29,12 +24,16 @@ import renderer.MapRenderer;
 import util.Range;
 
 import javax.measure.unit.SI;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Scanner;
 
 
 public class DroneExperiment {
     // Store related properties
-    private static Point storeLocation1 = new Point(600, 600);
-    private static Point storeLocation2 = new Point(300,300);
+    private static List<Point> storeLocations;
 
     // Map related properties
     private static Point resolution = new Point(1120.0,956.0);
@@ -43,11 +42,11 @@ public class DroneExperiment {
     private static final Range speedDroneLW = new Range(17,22);
     private static final Range speedDroneHW = new Range(11,22);
 
-    private static int capacityDroneLW = 3500; // Expressed in grams
-    private static int capacityDroneHW = 9000; // Expressed in grams
+    private static final int capacityDroneLW = 3500; // Expressed in grams
+    private static final int capacityDroneHW = 9000; // Expressed in grams
 
-    private static int batteryDroneLW = 2400;  // Expressed in seconds
-    private static int batteryDroneHW = 1500;  // Expressed in seconds
+    private static final int batteryDroneLW = 2400;  // Expressed in seconds
+    private static final int batteryDroneHW = 1500;  // Expressed in seconds
 
     private static final int amountDroneLW = 1;
     private static final int amountDroneHW = 1;
@@ -61,26 +60,7 @@ public class DroneExperiment {
     private static final int maxCapacity = 9000;
 
     private static final Point chargingPointLocation = new Point(2500,2500);
-
-    // Variable settings for scenario
-    // TODO change this
-    private static final long M1 = 60 * 1000L;
-    private static final long M4 = 4 * 60 * 1000L;
-    private static final long M5 = 5 * 60 * 1000L;
-    private static final long M7 = 7 * 60 * 1000L;
-    private static final long M10 = 10 * 60 * 1000L;
-    private static final long M12 = 12 * 60 * 1000L;
-    private static final long M13 = 13 * 60 * 1000L;
-    private static final long M18 = 18 * 60 * 1000L;
-    private static final long M20 = 20 * 60 * 1000L;
-    private static final long M25 = 25 * 60 * 1000L;
-    private static final long M30 = 30 * 60 * 1000L;
-    private static final long M40 = 40 * 60 * 1000L;
-    private static final long M60 = 60 * 60 * 1000L;
-    private static final Point P1_PICKUP = new Point(100, 200);
-    private static final Point P1_DELIVERY = new Point(400, 200);
-    private static final Point P2_PICKUP = new Point(100, 100);
-    private static final Point P2_DELIVERY = new Point(400, 100);
+    private static final long simulationLength = 100000;
 
     private DroneExperiment() {}
 
@@ -88,70 +68,35 @@ public class DroneExperiment {
      * Main method
      */
     public static void main(String[] args) {
-        System.out.println("Creating the scenario...");
+        loadStoreLocations("src/main/resources/stores.csv");
         Scenario scenario = createScenario();
-        System.out.println("Scenario done...");
-        // Starts the experiment builder.
+
         ExperimentResults results = Experiment.builder()
-                .addConfiguration(MASConfiguration.builder()
-                // NOTE: this example uses 'namedHandler's for Depots and Parcels, while
-                // very useful for debugging these should not be used in production as
-                // these are not thread safe. Use the 'defaultHandler()' instead.
+            .addConfiguration(MASConfiguration.builder()
                 .addEventHandler(AddDepotEvent.class, AddDepotEvent.namedHandler())
-                .addEventHandler(AddChargingPointEvent.class, AddChargingPointEvent.namedHandler())
-                .addEventHandler(AddOrderEvent.class, AddOrderEvent.namedHandler())
-                // There is no default handle for vehicle events, here a non functioning
-                // handler is added, it can be changed to add a custom vehicle to the
-                // simulator.
-                .addEventHandler(AddDroneEvent.class, DroneLWHandler.INSTANCE)
-//                .addEventHandler(AddDroneEvent.class, DroneHWHandler.INSTANCE)
+                .addEventHandler(AddChargingPointEvent.class, AddChargingPointEvent.defaultHandler())
+                .addEventHandler(AddParcelEvent.class, AddOrderEvent.defaultHandler())
+                .addEventHandler(AddDroneEvent.class, AddDroneEvent.defaultHandler())
                 .addEventHandler(TimeOutEvent.class, TimeOutEvent.ignoreHandler())
                 // Note: if you multi-agent system requires the aid of a model (e.g.
                 // CommModel) it can be added directly in the configuration. Models that
                 // are only used for the solution side should not be added in the
                 // scenario as they are not part of the problem.
                 .addModel(StatsTracker.builder()).build())
-
-                // Adds the newly constructed scenario to the experiment. Every
-                // configuration will be run on every scenario.
-                .addScenario(scenario)
-
-                // The number of repetitions for each simulation. Each repetition will
-                // have a unique random seed that is given to the simulator.
-                .repeat(1)
-
-                // The master random seed from which all random seeds for the
-                // simulations will be drawn.
-                .withRandomSeed(0)
-
-                // The number of threads the experiment will use, this allows to run
-                // several simulations in parallel. Note that when the GUI is used the
-                // number of threads must be set to 1.
-                .withThreads(1)
-
-                // We add a post processor to the experiment. A post processor can read
-                // the state of the simulator after it has finished. It can be used to
-                // gather simulation results. The objects created by the post processor
-                // end up in the ExperimentResults object that is returned by the
-                // perform(..) method of Experiment.
-                .usePostProcessor(new ExperimentPostProcessor())
-
-                // Adds the GUI just like it is added to a Simulator object.
-
-                .showGui(createGui(false))
-
-                // Starts the experiment, but first reads the command-line arguments
-                // that are specified for this application. By supplying the '-h' option
-                // you can see an overview of the supported options.
-                .perform();
+            .addScenario(scenario)
+            .repeat(1)
+            .withRandomSeed(0)
+            .withThreads(1)
+            .usePostProcessor(new ExperimentPostProcessor())
+            .showGui(createGui(false))
+            .perform();
 
         try {
             for (final Experiment.SimulationResult sr : results.getResults()) {
                 // The SimulationResult contains all information about a specific
                 // simulation, the result object is the object created by the post
                 // processor, a String in this case.
-                System.out.println(
-                        sr.getSimArgs().getRandomSeed() + " " + sr.getResultObject());
+                System.out.println(sr.getResultObject());
             }
         } catch(Exception e) {
             throw new IllegalStateException("Experiment did not complete.");
@@ -169,66 +114,56 @@ public class DroneExperiment {
         // In essence a scenario is just a list of events. The events must implement
         // the TimedEvent interface. You are free to construct any object as a
         // TimedEvent but keep in mind that implementations should be immutable.
-        return Scenario.builder()
-                // Adds one depot.
-                .addEvent(AddDepotEvent.create(-1, storeLocation1))
-                .addEvent(AddDepotEvent.create(-1, storeLocation2))
-                .addEvent(AddDroneEvent.create(-1, new DroneLW(speedDroneLW, capacityDroneLW, batteryDroneLW, chargingPointLocation)))
-//                .addEvent(AddDroneEvent.create(-1, new DroneHW(speedDroneHW, capacityDroneHW, batteryDroneHW, chargingPointLocation)))
-                .addEvent(AddChargingPointEvent.create(-1, chargingPointLocation))
-                // Two add parcel events are added. They are announced at different
-                // times and have different time windows.
-                .addEvent(
-                        AddOrderEvent.create(Parcel.builder(P1_PICKUP, P1_DELIVERY)
-                                .neededCapacity(0)
-                                .orderAnnounceTime(M1)
-                                .pickupTimeWindow(TimeWindow.create(M1, M20))
-                                .deliveryTimeWindow(TimeWindow.create(M4, M30))
-                                .buildDTO(), new Point(500,500)))
 
-                .addEvent(
-                        AddOrderEvent.create(Parcel.builder(P2_PICKUP, P2_DELIVERY)
-                                .neededCapacity(0)
-                                .orderAnnounceTime(M5)
-                                .pickupTimeWindow(TimeWindow.create(M10, M25))
-                                .deliveryTimeWindow(
-                                        TimeWindow.create(M20, M40))
-                                .buildDTO(), new Point(800,400)))
+        Scenario.Builder scenarioBuilder = Scenario.builder();
 
-                // Signals the end of the scenario. Note that it is possible to stop the
-                // simulation before or after this event is dispatched, that depends on
-                // the stop condition (see below).
-                .addEvent(TimeOutEvent.create(M60))
-                .scenarioLength(M60)
+        // TODO manually generate order events and add them to the scenario?
+//        ScenarioGenerator generator = ScenarioGenerator.builder()
+//            .parcels(OrderGenerator.builder()
+//                .pickupDurations(StochasticSuppliers.constant(5L))
+//                .deliveryDurations(StochasticSuppliers.constant(5L))
+//                .locations(Locations.builder().buildFixed(storeLocations))
+//                .neededCapacities(StochasticSuppliers.uniformInt(1000, 9000))
+//                .serviceDurations(StochasticSuppliers.uniformLong(10000,60000)) // TODO fill in these values more thoroughly
+//                .announceTimes(TimeSeries.uniform(simulationLength, 10000, 20)) // TODO experimental values
+////                .timeWindows()
+//                .build())
+//            .build();
 
-                // Adds a plane road model as this is part of the problem
-                .addModel(RoadModelBuilders.plane()
-//                .withObjectRadius(droneRadius)
-                        .withMinPoint(new Point(0,0))
-                        .withMaxPoint(new Point(5000,5000))
-                        .withDistanceUnit(SI.METER)
-                        .withSpeedUnit(SI.METERS_PER_SECOND)
-                        .withMaxSpeed(50))
 
-                // Adds the pdp model
-                .addModel(DefaultPDPModel.builder())
+        for (Point location : storeLocations) {
+            scenarioBuilder.addEvent(AddDepotEvent.create(-1, location));
+        }
 
-                // Adds the energy model
-                .addModel(DefaultEnergyModel.builder())
+        for (int i = 0; i < amountDroneLW; i++) {
+            scenarioBuilder.addEvent(AddDroneEvent
+                .create(new DroneLW(speedDroneLW, capacityDroneLW, batteryDroneLW, chargingPointLocation)));
+        }
 
-                // The stop condition indicates when the simulator should stop the
-                // simulation. Typically this is the moment when all tasks are performed.
-                // Custom stop conditions can be created by implementing the StopCondition
-                // interface.
-                .setStopCondition(StopConditions.or(
-                        StatsStopConditions.timeOutEvent(),
-                        StatsStopConditions.vehiclesDoneAndBackAtDepot()))
-                .build();
+        for (int i = 0; i < amountDroneHW; i++) {
+            scenarioBuilder.addEvent(AddDroneEvent
+                .create(new DroneHW(speedDroneHW, capacityDroneHW, batteryDroneHW, chargingPointLocation)));
+        }
+
+        scenarioBuilder.addEvent(AddChargingPointEvent.create(chargingPointLocation, amountChargersLW, amountChargersHW));
+
+        return scenarioBuilder
+            .addEvent(TimeOutEvent.create(simulationLength))
+            .scenarioLength(simulationLength)
+            .addModel(RoadModelBuilders.plane()
+                .withMinPoint(new Point(0,0))
+                .withMaxPoint(new Point(5000,5000))
+                .withDistanceUnit(SI.METER)
+                .withSpeedUnit(SI.METERS_PER_SECOND)
+                .withMaxSpeed(50))
+            .addModel(DefaultPDPModel.builder())
+            .addModel(DefaultEnergyModel.builder())
+            .setStopCondition(StatsStopConditions.timeOutEvent())
+            .build();
     }
 
     // TODO avoid code duplication
     private static View.Builder createGui(boolean testing) {
-        System.out.println("Creating view...");
         View.Builder view = View.builder()
                 .with(PlaneRoadModelRenderer.builder())
                 .with(RoadUserRenderer.builder()
@@ -254,27 +189,30 @@ public class DroneExperiment {
 
         if (testing) {
             view = view.withAutoClose()
-                    .withAutoPlay()
-                    .withSimulatorEndTime(10000)
-                    .withSpeedUp(64);
+                .withAutoPlay()
+                .withSimulatorEndTime(10000)
+                .withSpeedUp(64);
         }
-        System.out.println("View done");
         return view;
     }
 
-    enum DroneLWHandler implements TimedEventHandler<AddDroneEvent> {
-        INSTANCE {
-            @Override
-            public void handleTimedEvent(AddDroneEvent event, SimulatorAPI sim) {
-                sim.register(new DroneLW(speedDroneLW, capacityDroneLW, batteryDroneLW, chargingPointLocation));
+
+    /**
+     * TODO duplicated from DroneExample
+     * Reads the store locations from the specified csv file.
+     * @param filename the csv file.
+     */
+    private static void loadStoreLocations(String filename) {
+        storeLocations = new ArrayList<>();
+        try {
+            Scanner scanner = new Scanner(new File(filename));
+            scanner.useDelimiter("[,\n]");
+            while (scanner.hasNext()) {
+                storeLocations.add(new Point(new Double(scanner.next()), new Double(scanner.next())));
             }
+            scanner.close();
+        } catch (FileNotFoundException e) {
+            System.err.println("Could not read csv file with store locations.");
         }
     }
-//    enum DroneHWHandler implements TimedEventHandler<AddDroneEvent> {
-//        INSTANCE {
-//            public void handleTimedEvent(AddDroneEvent event, SimulatorAPI sim) {
-//                sim.register(new DroneHW(speedDroneHW, capacityDroneHW, batteryDroneHW, chargingPointLocation));
-//            }
-//        }
-//    }
 }

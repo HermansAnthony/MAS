@@ -145,7 +145,7 @@ public class DroneExample {
                         .deliveryDuration(5)
                         .pickupDuration(5)
                         .buildDTO();
-                    simulator.register(new Order(orderData, customer));
+                    simulator.register(new Order(orderData));
                 }
             }
 

@@ -18,24 +18,19 @@ import java.util.List;
 
 public class Order extends Parcel implements AntReceiver, TickListener {
 
-    private Customer customer;
     private List<Ant> temporaryAnts;
     private Optional<Vehicle> reserver;
     private int timeoutTimer;
 
     private static int TIMEOUT_RESERVE = 20; // TODO fine grain this value
 
-    public Order(ParcelDTO parcelDto, Customer _customer) {
+    public Order(ParcelDTO parcelDto) {
         super(parcelDto);
-        customer = _customer;
         temporaryAnts = new ArrayList<>();
         reserver = Optional.absent();
         timeoutTimer = TIMEOUT_RESERVE;
     }
 
-    public Customer getCustomer() {
-        return customer;
-    }
 
     @Override
     public void initRoadPDP(RoadModel pRoadModel, PDPModel pPdpModel) {}

@@ -6,9 +6,9 @@ public class EnergyDTO {
     final double MAX_CAPACITY;
     double batteryLevel;
 
-    public EnergyDTO(double _batteryLevel) {
-        batteryLevel = _batteryLevel;
-        MAX_CAPACITY = batteryLevel;
+    public EnergyDTO(double batteryLevel) {
+        this.batteryLevel = batteryLevel;
+        MAX_CAPACITY = this.batteryLevel;
     }
 
 

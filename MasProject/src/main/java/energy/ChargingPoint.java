@@ -4,19 +4,20 @@ import ant.Ant;
 import ant.AntReceiver;
 import ant.ExplorationAnt;
 import ant.IntentionAnt;
-import com.github.rinde.rinsim.core.model.time.TickListener;
-import pdp.Drone;
-import pdp.DroneHW;
-import pdp.DroneLW;
 import com.github.rinde.rinsim.core.model.road.RoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadUser;
+import com.github.rinde.rinsim.core.model.time.TickListener;
 import com.github.rinde.rinsim.core.model.time.TimeLapse;
 import com.github.rinde.rinsim.geom.Point;
 import org.jetbrains.annotations.NotNull;
+import pdp.Drone;
+import pdp.DroneHW;
+import pdp.DroneLW;
 import util.Tuple;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class ChargingPoint implements AntReceiver, RoadUser, EnergyUser, TickListener {
     private static final Integer TIMEOUT_RESERVATION = 20;
@@ -86,8 +87,12 @@ public class ChargingPoint implements AntReceiver, RoadUser, EnergyUser, TickLis
         return !chargers.get(droneClass).contains(null);
     }
 
-    private double occupationPercentage(Class droneClass) {
-        return ((double) chargers.get(droneClass).stream().filter(Objects::nonNull).count()) / chargers.get(droneClass).size();
+    private double occupationPercentage(Class droneClass, boolean includeReservations) {
+        Stream<Tuple<Drone, Boolean>> stream = chargers.get(droneClass).stream().filter(Objects::nonNull);
+        if (!includeReservations) {
+            stream = stream.filter(o -> o.second);
+        }
+        return ((double) stream.count()) / chargers.get(droneClass).size();
     }
 
     public boolean dronePresent(Drone drone) {
@@ -150,7 +155,7 @@ public class ChargingPoint implements AntReceiver, RoadUser, EnergyUser, TickLis
         if (ant instanceof ExplorationAnt) {
 
             ExplorationAnt explorationAnt = (ExplorationAnt) ant;
-            explorationAnt.setChargingPointOccupation(this.occupationPercentage(ant.getPrimaryAgent().getClass()));
+            explorationAnt.setChargingPointOccupation(this.occupationPercentage(ant.getPrimaryAgent().getClass(), true));
             explorationAnt.setSecondaryAgent(this);
 
         } else if (ant instanceof IntentionAnt) {
@@ -178,8 +183,8 @@ public class ChargingPoint implements AntReceiver, RoadUser, EnergyUser, TickLis
     @Override
     public String getDescription() {
         return "ChargingPoint - location: " + location + ", occupation: "
-            + occupationPercentage(DroneLW.class) * 100 + "% lightweight & "
-            + occupationPercentage(DroneHW.class) * 100 + "% heavyweight";
+            + occupationPercentage(DroneLW.class, true) * 100 + "% lightweight & "
+            + occupationPercentage(DroneHW.class, true) * 100 + "% heavyweight";
     }
 
     @Override

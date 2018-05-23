@@ -53,15 +53,15 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
     private Monitor monitor;
 
 
-    protected Drone(VehicleDTO _dto, EnergyDTO _battery, Range speedRange) {
-        super(_dto);
+    protected Drone(VehicleDTO dto, EnergyDTO battery, Range speedRange) {
+        super(dto);
         ID = nextID++;
         SPEED_RANGE = speedRange;
         payload = Optional.absent();
 
         energyModel = Optional.absent();
         chargingStatus = ChargingStatus.Idle;
-        battery = _battery;
+        this.battery = battery;
 
         state = delegateMasState.initialState;
         explorationAnts = new HashMap<>();
@@ -394,7 +394,11 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
         // If the drone arrived at the customer, deliver the package.
         if (rm.getPosition(this) == order.getDeliveryLocation()) {
 
-            new Thread(new RemoveCustomer(rm, pdp, order.getCustomer())).start();
+            java.util.Optional<Customer> optCustomer = rm.getObjectsOfType(Customer.class).stream()
+                .filter(o -> rm.getPosition(o) == order.getDeliveryLocation())
+                .findFirst();
+            optCustomer.ifPresent(customer -> new Thread(new RemoveCustomer(rm, pdp, customer)).start());
+
             pdp.deliver(this, order, timeLapse);
 
             payload = Optional.absent();
@@ -505,14 +509,14 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
         spawnExplorationAnts,
         intentionAntReturned,
         explorationAntsReturned,
-        continueReservation;
+        continueReservation
 
     }
 
     private enum ChargingStatus {
         Idle,
         MoveToCharger,
-        Charging;
+        Charging
     }
 
 }
