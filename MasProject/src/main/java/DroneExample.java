@@ -1,7 +1,7 @@
 import com.github.rinde.rinsim.core.Simulator;
-import energy.ChargingPoint;
-import energy.DefaultEnergyModel;
-import com.github.rinde.rinsim.core.model.pdp.*;
+import com.github.rinde.rinsim.core.model.pdp.DefaultPDPModel;
+import com.github.rinde.rinsim.core.model.pdp.Parcel;
+import com.github.rinde.rinsim.core.model.pdp.ParcelDTO;
 import com.github.rinde.rinsim.core.model.road.PlaneRoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadModelBuilders;
 import com.github.rinde.rinsim.core.model.time.TickListener;
@@ -11,12 +11,15 @@ import com.github.rinde.rinsim.geom.Point;
 import com.github.rinde.rinsim.ui.View;
 import com.github.rinde.rinsim.ui.renderers.PlaneRoadModelRenderer;
 import com.github.rinde.rinsim.ui.renderers.RoadUserRenderer;
+import energy.ChargingPoint;
+import energy.DefaultEnergyModel;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.jetbrains.annotations.NotNull;
 import pdp.Customer;
 import pdp.DroneHW;
 import pdp.DroneLW;
 import pdp.Order;
+import renderer.ChargingPointPanel;
 import renderer.DroneRenderer;
 import renderer.MapRenderer;
 import util.Range;
@@ -170,6 +173,7 @@ public class DroneExample {
                     DroneHW.class, "/droneHW-32.png"))
             .with(DroneRenderer.builder())
             .with(MapRenderer.builder(map))
+            .with(ChargingPointPanel.builder())
             .withResolution(new Double(resolution.x).intValue(), new Double(resolution.y).intValue())
             .withTitleAppendix("Drone Demo - WIP");
 

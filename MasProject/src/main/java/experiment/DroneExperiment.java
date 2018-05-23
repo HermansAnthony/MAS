@@ -24,6 +24,7 @@ import org.apache.commons.math3.random.RandomGenerator;
 import pdp.Customer;
 import pdp.DroneHW;
 import pdp.DroneLW;
+import renderer.ChargingPointPanel;
 import renderer.DroneRenderer;
 import renderer.MapRenderer;
 import util.Range;
@@ -194,6 +195,7 @@ public class DroneExperiment {
             .with(MapRenderer.builder("target/classes/leuven.png"))
             .with(TimeLinePanel.builder())
             .with(StatsPanel.builder())
+            .with(ChargingPointPanel.builder())
             .withResolution(new Double(resolution.x).intValue(), new Double(resolution.y).intValue())
             .withTitleAppendix("Drone experiment");
 
