@@ -192,7 +192,7 @@ public class DroneExperiment {
                 .withImageAssociation(
                     DroneHW.class, "/droneHW-32.png"))
             .with(DroneRenderer.builder())
-            .with(MapRenderer.builder("target/classes/leuven.png"))
+            .with(MapRenderer.builder("target/classes/leuven828.png"))
             .with(TimeLinePanel.builder())
             .with(StatsPanel.builder())
             .with(ChargingPointPanel.builder())
