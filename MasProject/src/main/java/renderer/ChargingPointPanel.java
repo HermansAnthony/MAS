@@ -23,7 +23,7 @@ import pdp.DroneLW;
 public final class ChargingPointPanel extends AbstractModelVoid
         implements PanelRenderer {
 
-    private static final int PREFERRED_SIZE = 118;
+    private static final int PREFERRED_SIZE = 225;
     private final EnergyModel energyModel;
     Optional<Table> statsTable;
 
@@ -130,10 +130,10 @@ public final class ChargingPointPanel extends AbstractModelVoid
                 }
                 ChargingPoint chargingPoint = energyModel.getChargingPoint();
                 if (chargingPoint == null){return;}
-                statsTable.get().getItem(0).setText(1, String.valueOf(chargingPoint.getOccupationPercentage(DroneLW.class, false)));
-                statsTable.get().getItem(0).setText(2, String.valueOf(chargingPoint.getOccupationPercentage(DroneLW.class, true)));
-                statsTable.get().getItem(1).setText(1, String.valueOf(chargingPoint.getOccupationPercentage(DroneHW.class, false)));
-                statsTable.get().getItem(1).setText(2, String.valueOf(chargingPoint.getOccupationPercentage(DroneHW.class, true)));
+                statsTable.get().getItem(0).setText(1, String.valueOf(chargingPoint.getOccupationPercentage(DroneLW.class, false)*100)+'%');
+                statsTable.get().getItem(0).setText(2, String.valueOf(chargingPoint.getOccupationPercentage(DroneLW.class, true)*100)+'%');
+                statsTable.get().getItem(1).setText(1, String.valueOf(chargingPoint.getOccupationPercentage(DroneHW.class, false)*100)+'%');
+                statsTable.get().getItem(1).setText(2, String.valueOf(chargingPoint.getOccupationPercentage(DroneHW.class, true)*100)+'%');
             }
         });
     }
