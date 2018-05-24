@@ -13,6 +13,8 @@ import org.jetbrains.annotations.NotNull;
 import pdp.Drone;
 import pdp.DroneHW;
 import pdp.DroneLW;
+import util.ChargingPointMeasurement;
+import util.ChargingPointMonitor;
 import util.Tuple;
 
 import java.util.*;
@@ -27,7 +29,7 @@ public class ChargingPoint implements AntReceiver, RoadUser, EnergyUser, TickLis
     private Map<Drone, Integer> timeoutReservations;
 
     private Queue<Ant> temporaryAnts;
-    private EnergyModel energyModel;
+    private ChargingPointMonitor monitor;
 
     public ChargingPoint(Point loc, int maxCapacityLW, int maxCapacityHW) {
         location = loc;
@@ -36,6 +38,7 @@ public class ChargingPoint implements AntReceiver, RoadUser, EnergyUser, TickLis
         chargers.put(DroneHW.class, Arrays.asList(new Tuple[maxCapacityHW]));
         timeoutReservations = new HashMap<>();
         temporaryAnts = new ArrayDeque<>();
+        monitor = new ChargingPointMonitor();
     }
 
     @Override
@@ -146,9 +149,7 @@ public class ChargingPoint implements AntReceiver, RoadUser, EnergyUser, TickLis
     }
 
     @Override
-    public void initEnergyUser(EnergyModel energyModel) {
-        this.energyModel = energyModel;
-    }
+    public void initEnergyUser(EnergyModel energyModel) {}
 
     public final Point getLocation() {
         return location;
@@ -223,5 +224,14 @@ public class ChargingPoint implements AntReceiver, RoadUser, EnergyUser, TickLis
         for (Drone drone: timeoutDrones) {
             cancelReservation(drone);
         }
+
+        monitor.addMeasurement(new ChargingPointMeasurement(
+            this.getOccupationPercentage(DroneLW.class, true),
+            this.getOccupationPercentage(DroneHW.class, true)));
+    }
+
+
+    public ChargingPointMeasurement getAverageOccupation() {
+        return monitor.getAverageOccupation();
     }
 }
