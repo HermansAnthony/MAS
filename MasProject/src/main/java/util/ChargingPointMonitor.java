@@ -6,7 +6,7 @@ import java.util.List;
 import static com.google.common.math.IntMath.pow;
 
 public class ChargingPointMonitor {
-    List<List<ChargingPointMeasurement>> measurements;
+    private List<List<ChargingPointMeasurement>> measurements;
     private static final int AGG_SIZE = 50;
 
     public ChargingPointMonitor() {
@@ -49,8 +49,6 @@ public class ChargingPointMonitor {
 
 
     public ChargingPointMeasurement getAverageOccupation() {
-
-        System.out.println("Total amount of aggregated lists: " + measurements.size());
         Tuple<Double, Double> aggregatedPercentages = new Tuple<>(0.0, 0.0);
         int totalAmountOfMeasurements = 0;
 
