@@ -63,7 +63,7 @@ public class ChargingPointMonitor {
         }
 
         return new ChargingPointMeasurement(
-                aggregatedPercentages.first / totalAmountOfMeasurements,
-                aggregatedPercentages.second / totalAmountOfMeasurements);
+aggregatedPercentages.first / totalAmountOfMeasurements,
+aggregatedPercentages.second / totalAmountOfMeasurements);
     }
 }

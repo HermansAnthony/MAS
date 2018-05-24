@@ -1,13 +1,14 @@
 package experiment;
 
-import java.util.Set;
-
 import com.github.rinde.rinsim.core.Simulator;
 import com.github.rinde.rinsim.core.model.road.PlaneRoadModel;
 import com.github.rinde.rinsim.experiment.Experiment.SimArgs;
 import com.github.rinde.rinsim.experiment.PostProcessor;
+import energy.EnergyModel;
 import pdp.DroneHW;
 import pdp.DroneLW;
+
+import java.util.Set;
 
 /**
  * This is an example implementation of a {@link ExperimentPostProcessor}. In this example
@@ -26,6 +27,8 @@ public final class ExperimentPostProcessor implements PostProcessor<String> {
         final Set<DroneHW> dronesHW = sim.getModelProvider()
                 .getModel(PlaneRoadModel.class).getObjectsOfType(DroneHW.class);
 
+        EnergyModel em = sim.getModelProvider().getModel(EnergyModel.class);
+
         // Construct a result string based on the simulator state, of course, in
         // actual code the result should not be a string but a value object
         // containing the values of interest.
@@ -40,6 +43,9 @@ public final class ExperimentPostProcessor implements PostProcessor<String> {
         } else {
             sb.append(dronesHW.size()).append(" heavyweight drones were added.\n");
         }
+
+        sb.append("The average occupation of the charging station of the simulation was "
+            + em.getChargingPoint().getAverageOccupation().toString() + ".\n");
 
         if (sim.getCurrentTime() >= args.getScenario().getTimeWindow().end()) {
             sb.append("Simulation has completed.");

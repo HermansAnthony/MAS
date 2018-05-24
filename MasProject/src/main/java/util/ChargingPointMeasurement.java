@@ -18,6 +18,6 @@ public class ChargingPointMeasurement {
     }
 
     public String toString() {
-        return "<Lightweight: " + occupationLW*100 + "%, Heavyweight: " + occupationHW*100 + "%>";
+        return String.format("<Lightweight: %.2f%%, Heavyweight: %.2f%%>", occupationLW*100, occupationHW*100);
     }
 }

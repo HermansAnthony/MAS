@@ -67,7 +67,7 @@ public class DroneExperiment {
     private static final int maxCapacity = 9000;
 
     private static final Point chargingPointLocation = new Point(2500,2500);
-    private static final long simulationLength = 1000000; // TODO adjust this to amount of ticks, and extend simulation duration (currently 16:40 minutes)
+    private static final long simulationLength = 1000000 * 10; // TODO adjust this to amount of ticks, and extend simulation duration (currently 16:40 minutes)
 
 
     private static final int SEED_ORDERS = 0;
