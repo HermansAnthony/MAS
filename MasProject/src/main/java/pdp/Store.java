@@ -1,3 +1,5 @@
+package pdp;
+
 import com.github.rinde.rinsim.core.model.pdp.Depot;
 import com.github.rinde.rinsim.geom.Point;
 

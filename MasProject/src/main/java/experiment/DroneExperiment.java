@@ -55,8 +55,8 @@ public class DroneExperiment {
     private static final int batteryDroneLW = 2400;  // Expressed in seconds
     private static final int batteryDroneHW = 1500;  // Expressed in seconds
 
-    private static final int amountDroneLW = 1;
-    private static final int amountDroneHW = 1;
+    private static final int amountDroneLW = 20;
+    private static final int amountDroneHW = 10;
 
     //    private static final int droneRadius = 1;
     private static final int amountChargersLW = 5;

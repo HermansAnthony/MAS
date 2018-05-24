@@ -44,8 +44,8 @@ public final class ExperimentPostProcessor implements PostProcessor<String> {
             sb.append(dronesHW.size()).append(" heavyweight drones were added.\n");
         }
 
-        sb.append("The average occupation of the charging station of the simulation was "
-            + em.getChargingPoint().getAverageOccupation().toString() + ".\n");
+        sb.append("The average occupation of the charging station of the simulation was ");
+        sb.append(em.getChargingPoint().getAverageOccupation().toString()).append(".\n");
 
         if (sim.getCurrentTime() >= args.getScenario().getTimeWindow().end()) {
             sb.append("Simulation has completed.");
