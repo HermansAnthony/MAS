@@ -9,6 +9,7 @@ import com.github.rinde.rinsim.core.model.pdp.Parcel;
 import com.github.rinde.rinsim.core.model.pdp.ParcelDTO;
 import com.github.rinde.rinsim.core.model.pdp.Vehicle;
 import com.github.rinde.rinsim.core.model.road.RoadModel;
+import com.github.rinde.rinsim.core.model.road.RoadUser;
 import com.github.rinde.rinsim.core.model.time.TickListener;
 import com.github.rinde.rinsim.core.model.time.TimeLapse;
 import com.google.common.base.Optional;
@@ -23,12 +24,14 @@ public class Order extends Parcel implements AntReceiver, TickListener {
     private int timeoutTimer;
 
     private static int TIMEOUT_RESERVE = 20; // TODO fine grain this value
+    private RoadUser customer;
 
-    public Order(ParcelDTO parcelDto) {
+    public Order(ParcelDTO parcelDto, Customer customer) {
         super(parcelDto);
         temporaryAnts = new ArrayList<>();
         reserver = Optional.absent();
         timeoutTimer = TIMEOUT_RESERVE;
+        this.customer = customer;
     }
 
 
@@ -116,5 +119,9 @@ public class Order extends Parcel implements AntReceiver, TickListener {
     @Override
     public String getDescription() {
         return "Order - " + getOrderDescription();
+    }
+
+    public RoadUser getCustomer() {
+        return customer;
     }
 }

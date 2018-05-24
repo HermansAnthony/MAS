@@ -4,16 +4,17 @@ import pdp.Drone;
 
 public abstract class Ant {
 
-    protected Drone primaryAgent;
-    protected AntReceiver secondaryAgent; // TODO advanced exploration ants going to multiple nodes -> sort of planning
+    private Drone primaryAgent;
+    private AntReceiver secondaryAgent; // TODO advanced exploration ants going to multiple nodes -> sort of planning
 
     Ant(Drone primaryAgent) {
         this.primaryAgent = primaryAgent;
+        this.secondaryAgent = null;
     }
 
 
-    public void setSecondaryAgent(AntReceiver parcel) {
-        secondaryAgent = parcel;
+    public void setSecondaryAgent(AntReceiver secondaryAgent) {
+        this.secondaryAgent = secondaryAgent;
     }
 
     public AntReceiver getSecondaryAgent() {

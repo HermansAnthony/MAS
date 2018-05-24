@@ -137,6 +137,11 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
                         state = delegateMasState.initialState;
                         break;
                     }
+
+                    String description = " Best merit: " + intention.second + ".\n";
+                    description += "Intention ant is sent to '" + intention.first.getDescription() +"'.\n";
+                    monitor.writeToFile(timeLapse.getStartTime(), description);
+
                     spawnIntentionAnt(intention.first, intention.second);
 
                     // Clear all the exploration ants since they are outdated at this point
@@ -201,6 +206,10 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
                     double meritDifference = intention.second - intentionAnt.entrySet().iterator().next().getKey().merit;
                     if ((meritDifference > RECONSIDERATION_MERIT) && (intention.first != null)) {
                         if (reconsiderAction(intention, timeLapse)) {
+                            String description = " Reconsideration happened: new best merit = " + intention.second + ".\n";
+                            description += "Intention ant is sent to '" + intention.first.getDescription() +"'.\n";
+                            monitor.writeToFile(timeLapse.getStartTime(), description);
+
                             state = delegateMasState.intentionAntReturned;
                             break;
                         }
@@ -229,9 +238,6 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
         spawnIntentionAnt(intention.first, intention.second);
         explorationAnts.clear();
 
-        String description = "Reconsideration happened: new best merit = " + intention.second + ".\n";
-        description += "Intention ant is sent to '" + intention.first.getDescription() +"'.\n";
-        monitor.writeToFile(timeLapse.getStartTime(), description);
         return true;
     }
 
@@ -276,18 +282,12 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
             }
         }
 
-        // Log the intention ant and merit calculation in the log file
-        if (bestDestination != null) {
-            String description = " Best merit: " + bestMerit + ".\n";
-            description += "Intention ant is sent to '" + bestDestination.getDescription() +"'.\n";
-            monitor.writeToFile(timeLapse.getStartTime(), description);
-        }
-
         return new Tuple<>(bestDestination, bestMerit);
     }
 
     private double determineChargeBenefits(double chargingPointOccupation) {
-        return this.battery.fullyCharged() ? Double.NEGATIVE_INFINITY : 100 * (1 - chargingPointOccupation);
+        return this.battery.fullyCharged() || chargingPointOccupation == 1 ?
+            Double.NEGATIVE_INFINITY : 100 * (1 - chargingPointOccupation);
     }
 
     /**
@@ -393,14 +393,8 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
 
         // If the drone arrived at the customer, deliver the package.
         if (rm.getPosition(this) == order.getDeliveryLocation()) {
-
-            java.util.Optional<Customer> optCustomer = rm.getObjectsOfType(Customer.class).stream()
-                .filter(o -> rm.getPosition(o) == order.getDeliveryLocation())
-                .findFirst();
-            optCustomer.ifPresent(customer -> new Thread(new RemoveCustomer(rm, pdp, customer)).start());
-
+            new Thread(new RemoveCustomer(rm, pdp, order.getCustomer())).start();
             pdp.deliver(this, order, timeLapse);
-
             payload = Optional.absent();
         }
     }

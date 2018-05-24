@@ -54,10 +54,8 @@ public class DroneExample {
     private static int batteryDroneLW = 2400;  // Expressed in seconds
     private static int batteryDroneHW = 1500;  // Expressed in seconds
 
-//    private static final int droneRadius = 1;
     private static final int amountChargersLW = 5;
     private static final int amountChargersHW = 5;
-//    private static final int amountRequests = 100;
     private static final double orderProbability = 0.005;
     private static final int serviceDuration = 60000;
     private static final int maxCapacity = 9000;
@@ -100,11 +98,9 @@ public class DroneExample {
      */
     private static Simulator run(boolean testing, final long endTime) {
         final View.Builder view = createGui(testing);
-        // use map of leuven
         final Simulator simulator = Simulator.builder()
             .addModel(TimeModel.builder().withTickLength(250))
             .addModel(RoadModelBuilders.plane()
-//                .withObjectRadius(droneRadius)
                 .withMinPoint(new Point(0,0))
                 .withMaxPoint(new Point(5000,5000))
                 .withDistanceUnit(SI.METER)
@@ -144,7 +140,7 @@ public class DroneExample {
                         .deliveryDuration(5)
                         .pickupDuration(5)
                         .buildDTO();
-                    simulator.register(new Order(orderData));
+                    simulator.register(new Order(orderData, customer));
                 }
             }
 

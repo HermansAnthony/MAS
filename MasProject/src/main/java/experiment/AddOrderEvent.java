@@ -53,8 +53,9 @@ public class AddOrderEvent implements TimedEvent {
         INSTANCE {
             @Override
             public void handleTimedEvent(AddOrderEvent event, SimulatorAPI sim) {
-                sim.register(new Customer(event.getParcelDTO().getDeliveryLocation()));
-                sim.register(new Order(event.getParcelDTO()));
+                Customer customer = new Customer(event.getParcelDTO().getDeliveryLocation());
+                sim.register(customer);
+                sim.register(new Order(event.getParcelDTO(), customer));
             }
 
             @Override
