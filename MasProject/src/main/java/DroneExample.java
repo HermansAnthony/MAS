@@ -37,7 +37,7 @@ import java.util.Scanner;
 
 public class DroneExample {
 
-    private static final String map = "/leuven.png";
+    private static final String map = "/leuven2_800x800.png";
 
     private static final int endTime = 60000;
 

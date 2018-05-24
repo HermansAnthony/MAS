@@ -27,7 +27,7 @@ import java.util.List;
 public final class ChargingPointPanel extends AbstractModelVoid
         implements PanelRenderer {
 
-    private static final int PREFERRED_SIZE = 225;
+    private static final int PREFERRED_SIZE = 125;
     private final EnergyModel energyModel;
     private boolean chargersInitialized;
     Optional<Table> statsTable;
