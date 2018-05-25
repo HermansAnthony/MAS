@@ -8,12 +8,14 @@ import java.util.Map;
 public class ExplorationAnt extends Ant {
     public AntDestination destination;
     private List<List<AntReceiver>> paths;
+    private List<AntReceiver> travelledPath;
     private Map<Class<?>, Double> chargingPointOccupations;
     private int hopCount;
 
     public ExplorationAnt(AntReceiver source, AntDestination destination) {
         super(source);
         this.paths = new ArrayList<>();
+        this.travelledPath = new ArrayList<>();
         this.destination = destination;
         this.hopCount = 1;
         this.chargingPointOccupations = null;
@@ -22,6 +24,7 @@ public class ExplorationAnt extends Ant {
     public ExplorationAnt(AntReceiver source, AntDestination destination, int hopCount) {
         super(source);
         this.paths = new ArrayList<>();
+        this.travelledPath = new ArrayList<>();
         this.destination = destination;
         this.hopCount = hopCount;
         this.chargingPointOccupations = null;
@@ -66,6 +69,11 @@ public class ExplorationAnt extends Ant {
             path.add(0, getSecondaryAgent());
             this.paths.add(path);
         }
+    }
+
+    public List<AntReceiver> addHopTravelledPath(AntReceiver hop) {
+        travelledPath.add(hop);
+        return travelledPath;
     }
 
     public enum AntDestination {

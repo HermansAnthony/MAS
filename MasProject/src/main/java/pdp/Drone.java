@@ -262,6 +262,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
             Order order = (Order) destination;
             double neededCapacity = order.getNeededCapacity();
 
+            // TODO move this check higher up to not even consider paths which satisfy these conditions
             if (neededCapacity > this.getDTO().getCapacity() || order.isReserved()) {
                 return Double.NEGATIVE_INFINITY;
             }
@@ -306,7 +307,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
                 + (distancePickup / getSpeed(0) * 1000)
                 + (distanceDeliver / getSpeed(neededCapacity) * 1000);
         }
-        return merit;
+        return merit / path.size();
     }
 
     private boolean reconsiderAction(Tuple<AntReceiver,Double> intention, TimeLapse timeLapse) {

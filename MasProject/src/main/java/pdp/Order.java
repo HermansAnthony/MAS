@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 
 public class Order extends Parcel implements AntReceiver, TickListener, EnergyUser {
 
+    private static final int MAXIMUM_HOPCOUNT = 3;
     private Queue<Ant> temporaryAnts;
     // TODO split up Map for returning exploration ants
     private Map<ExplorationAnt, List<Tuple<ExplorationAnt, Boolean>>> followupAnts;
@@ -116,18 +117,15 @@ public class Order extends Parcel implements AntReceiver, TickListener, EnergyUs
                     .forEach(o -> o.second = true);
             } else {
                 explorationAnt.setSecondaryAgent(this);
+                List<AntReceiver> travelledPath = explorationAnt.addHopTravelledPath(this);
+
                 // The order is the destination for the ant
                 // Send out more exploration ants if necessary
                 int hopCount = explorationAnt.getHopCount();
                 Collection<Order> ordersWithinDistance =
                     RoadModels.findObjectsWithinRadius(this.getDeliveryLocation(), roadModel, 1000, Order.class);
-                // TODO keep track of current path of exploration ant -> filter parcels which have already been visited/considered
 
-                // 1 because this order itself is still counted
-//                if (hopCount == 3 || ordersWithinDistance.size() <= 1) {
-                if (hopCount == 3 ||
-                    ordersWithinDistance.isEmpty() ||
-                    (ordersWithinDistance.size() == 1 && ordersWithinDistance.contains(this))) {
+                if (hopCount == MAXIMUM_HOPCOUNT) {
                     // Send an exploration ant to the charging point
                     ExplorationAnt newAnt =
                         new ExplorationAnt(this, ExplorationAnt.AntDestination.ChargingPoint, hopCount+1);
@@ -137,7 +135,8 @@ public class Order extends Parcel implements AntReceiver, TickListener, EnergyUs
                     List<Tuple<ExplorationAnt, Boolean>> newAnts = new ArrayList<>();
 
                     for (Order order : ordersWithinDistance) {
-                        if (order == this) {
+                        // Make sure no loops or orders which are already reserved are considered
+                        if (travelledPath.contains(order) || order.isReserved()) {
                             continue;
                         }
 
