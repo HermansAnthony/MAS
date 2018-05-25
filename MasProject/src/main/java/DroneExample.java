@@ -39,8 +39,8 @@ public class DroneExample {
     private static final int endTime = 60000;
 
     // LW = light weight, HW = heavy weight
-    private static final int amountDroneLW = 20;
-    private static final int amountDroneHW = 10;
+    private static final int amountDroneLW = 0;
+    private static final int amountDroneHW = 1;
 
     private static final Range speedDroneLW = new Range(17,22);
     private static final Range speedDroneHW = new Range(11,22);
@@ -166,7 +166,7 @@ public class DroneExample {
             .with(DroneRenderer.builder())
             .with(MapRenderer.builder(map))
             .with(ChargingPointPanel.builder())
-            .withResolution(new Double(resolutionImage.x).intValue(), new Double(resolutionImage.y).intValue())
+            .withResolution(new Double(resolutionImage.x).intValue() + 125, new Double(resolutionImage.y).intValue())
             .withTitleAppendix("Drone Demo");
 
         if (testing) {

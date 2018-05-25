@@ -158,31 +158,39 @@ public class ChargingPoint implements AntReceiver, RoadUser, EnergyUser, TickLis
     @Override
     public void receiveAnt(Ant ant) {
         if (ant instanceof ExplorationAnt) {
-
             ExplorationAnt explorationAnt = (ExplorationAnt) ant;
-            explorationAnt.setChargingPointOccupation(this.getOccupationPercentage(ant.getPrimaryAgent().getClass(), true));
+            explorationAnt.setChargingPointOccupations(this.getOccupations(true));
             explorationAnt.setSecondaryAgent(this);
-
         } else if (ant instanceof IntentionAnt) {
-
             IntentionAnt intentionAnt = (IntentionAnt) ant;
-            if (!dronePresent(intentionAnt.getPrimaryAgent())) {
+            // Can do a cast to Drone here since intention ants only originate from drones.
+            Drone drone = (Drone) intentionAnt.getPrimaryAgent();
+            if (!dronePresent(drone)) {
                 // The drone wishes to reserve a spot in the charger
-                if (!chargersOccupied(ant.getPrimaryAgent())) {
-                    this.reserveCharger(ant.getPrimaryAgent());
+                if (!chargersOccupied(drone)) {
+                    this.reserveCharger(drone);
                     intentionAnt.reservationApproved = true;
                 } else {
                     intentionAnt.reservationApproved = false;
                 }
             } else if (timeoutReservations.containsKey(intentionAnt.getPrimaryAgent())) {
-                timeoutReservations.replace(intentionAnt.getPrimaryAgent(), TIMEOUT_RESERVATION);
+                timeoutReservations.replace(drone, TIMEOUT_RESERVATION);
             }
-
         }
 
         synchronized (temporaryAnts) {
             temporaryAnts.add(ant);
         }
+    }
+
+    private Map<Class<?>,Double> getOccupations(boolean includeReservations) {
+        Map<Class<?>, Double> occupations = new HashMap<>();
+
+        for (Class<?> classType : chargers.keySet()) {
+            occupations.put(classType, getOccupationPercentage(classType, includeReservations));
+        }
+
+        return occupations;
     }
 
     @Override

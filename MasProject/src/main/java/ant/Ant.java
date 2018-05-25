@@ -1,13 +1,11 @@
 package ant;
 
-import pdp.Drone;
-
 public abstract class Ant {
 
-    private Drone primaryAgent;
+    private AntReceiver primaryAgent;
     private AntReceiver secondaryAgent; // TODO advanced exploration ants going to multiple nodes -> sort of planning
 
-    Ant(Drone primaryAgent) {
+    Ant(AntReceiver primaryAgent) {
         this.primaryAgent = primaryAgent;
         this.secondaryAgent = null;
     }
@@ -25,7 +23,7 @@ public abstract class Ant {
         primaryAgent.receiveAnt(this);
     }
 
-    public Drone getPrimaryAgent() {
+    public AntReceiver getPrimaryAgent() {
         return primaryAgent;
     }
 }

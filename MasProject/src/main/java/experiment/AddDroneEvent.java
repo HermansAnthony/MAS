@@ -55,6 +55,6 @@ public class AddDroneEvent implements TimedEvent {
             public String toString() {
                 return AddDroneEvent.class.getSimpleName() + ".defaultHandler()";
             }
-        };
+        }
     }
 }

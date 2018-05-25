@@ -6,6 +6,14 @@ import java.util.List;
 import static com.google.common.math.IntMath.pow;
 
 public class ChargingPointMonitor {
+    /**
+     * Contains the occupation measurements of the ChargingPoint during the simulation.
+     * The level the measurement is located at indicates the level of times it has been aggregated.
+     * To be more specific:
+     *  - Level 0 contains measurements for specific ticks
+     *  - Level 1 contains aggregated measurements of AGG_SIZE level 0 measurements
+     *  - ...
+     */
     private List<List<ChargingPointMeasurement>> measurements;
     private static final int AGG_SIZE = 50;
 
@@ -63,7 +71,7 @@ public class ChargingPointMonitor {
         }
 
         return new ChargingPointMeasurement(
-aggregatedPercentages.first / totalAmountOfMeasurements,
-aggregatedPercentages.second / totalAmountOfMeasurements);
+            aggregatedPercentages.first / totalAmountOfMeasurements,
+            aggregatedPercentages.second / totalAmountOfMeasurements);
     }
 }

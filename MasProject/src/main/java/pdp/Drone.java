@@ -18,7 +18,7 @@ import energy.EnergyDTO;
 import energy.EnergyModel;
 import energy.EnergyUser;
 import util.BatteryCalculations;
-import util.Monitor;
+import util.DroneMonitor;
 import util.Range;
 import util.Tuple;
 
@@ -37,7 +37,6 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
     int ID;
     private final Range SPEED_RANGE;
     private Optional<Parcel> payload;
-    private Optional<AntReceiver> destination;
 
     // Energy related stuff
     private Optional<EnergyModel> energyModel;
@@ -50,7 +49,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
     private Map<IntentionAnt, Boolean> intentionAnt; // Just one intention ant
 
     // Logger for the delegate mas actions
-    private Monitor monitor;
+    private DroneMonitor monitor;
 
 
     protected Drone(VehicleDTO dto, EnergyDTO battery, Range speedRange) {
@@ -67,7 +66,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
         explorationAnts = new HashMap<>();
         intentionAnt = new HashMap<>();
 
-        monitor = new Monitor(this.getDroneString());
+        monitor = new DroneMonitor(this.getDroneString());
     }
 
     public int getID(){return this.ID;}
@@ -132,7 +131,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
                 // Check if all exploration ants have returned
                 if (!explorationAnts.values().contains(false)) {
                     // Send out an intention ant to the order with the highest merit
-                    Tuple<AntReceiver, Double> intention = getBestIntention(timeLapse);
+                    Tuple<AntReceiver, Double> intention = getBestIntentionPath(timeLapse);
                     if (intention.first == null) {
                         state = delegateMasState.initialState;
                         break;
@@ -202,7 +201,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
                     spawnExplorationAnts(false);
                 } else if (!explorationAnts.containsValue(false)) {
                     // Check for reconsiderations
-                    Tuple<AntReceiver, Double> intention = getBestIntention(timeLapse);
+                    Tuple<AntReceiver, Double> intention = getBestIntentionPath(timeLapse);
                     double meritDifference = intention.second - intentionAnt.entrySet().iterator().next().getKey().merit;
                     if ((meritDifference > RECONSIDERATION_MERIT) && (intention.first != null)) {
                         if (reconsiderAction(intention, timeLapse)) {
@@ -221,6 +220,13 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
                 break;
             }
         }
+    }
+
+    private Tuple<AntReceiver,Double> getBestIntentionPath(TimeLapse timeLapse) {
+        // TODO get best merit for paths
+//        System.out.println("Found these paths for the first exploration ant: ");
+//        System.out.println(explorationAnts.keySet().iterator().next().getPaths());
+        return getBestIntention(timeLapse);
     }
 
     private boolean reconsiderAction(Tuple<AntReceiver,Double> intention, TimeLapse timeLapse) {
@@ -274,7 +280,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
             .filter(o -> o.destination == ExplorationAnt.AntDestination.ChargingPoint).collect(Collectors.toList())) {
             ChargingPoint chargingPoint = (ChargingPoint) ant.getSecondaryAgent();
 
-            double merit = determineChargeBenefits(ant.getChargingPointOccupation());
+            double merit = determineChargeBenefits(ant.getChargingPointOccupations().get(this.getClass()));
 
             if (merit > bestMerit) {
                 bestMerit = merit;
@@ -472,18 +478,18 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
         RoadUser customer;
         Stopwatch stopwatch;
 
-        RemoveCustomer(RoadModel _rm, PDPModel _pdp, RoadUser _customer) {
-            rm = _rm;
-            pdp = _pdp;
-            customer = _customer;
-            stopwatch = Stopwatch.createStarted();
+        RemoveCustomer(RoadModel rm, PDPModel pdp, RoadUser customer) {
+            this.rm = rm;
+            this.pdp = pdp;
+            this.customer = customer;
+            this.stopwatch = Stopwatch.createStarted();
 
         }
 
         @Override
         public void run() {
             while (pdp.getVehicleState(Drone.this) == PDPModel.VehicleState.DELIVERING) {
-                // Timeout of 30 seconds in order to kill thread if necessary.
+                // Timeout of 10 seconds in order to kill thread if necessary.
                 if (stopwatch.elapsed(TimeUnit.SECONDS) > 10) {
                     return;
                 }

@@ -3,12 +3,12 @@ package util;
 import java.io.*;
 import java.text.SimpleDateFormat;
 
-public class Monitor {
+public class DroneMonitor {
     private String fileName;
     private static String outputDirectory = "logging";
     private static SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm:ss");
 
-    public Monitor(String fileName){
+    public DroneMonitor(String fileName){
 
         File directory = new File(outputDirectory);
         if (! directory.exists()){
