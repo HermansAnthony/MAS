@@ -16,7 +16,6 @@ import com.github.rinde.rinsim.core.model.time.TimeLapse;
 import com.google.common.base.Optional;
 import energy.EnergyModel;
 import energy.EnergyUser;
-import util.Tuple;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -26,7 +25,8 @@ public class Order extends Parcel implements AntReceiver, TickListener, EnergyUs
     private static final int MAXIMUM_HOPCOUNT = 3;
     private Queue<Ant> temporaryAnts;
     // TODO split up Map for returning exploration ants
-    private Map<ExplorationAnt, List<Tuple<ExplorationAnt, Boolean>>> followupAnts;
+    private Map<ExplorationAnt, List<ExplorationAnt>> followupAnts;
+    private Map<ExplorationAnt, Boolean> followupAntsPresence;
 
     private Optional<Vehicle> reserver;
     private int timeoutTimer;
@@ -40,6 +40,7 @@ public class Order extends Parcel implements AntReceiver, TickListener, EnergyUs
         super(parcelDto);
         temporaryAnts = new ArrayDeque<>();
         followupAnts = new HashMap<>();
+        followupAntsPresence = new HashMap<>();
         reserver = Optional.absent();
         timeoutTimer = TIMEOUT_RESERVE;
         this.customer = customer;
@@ -87,7 +88,7 @@ public class Order extends Parcel implements AntReceiver, TickListener, EnergyUs
         }
     }
 
-    public String getOrderDescription(){
+    private String getOrderDescription(){
         // TODO move this to the description down below
         String result = "location: ";
         try {
@@ -111,10 +112,7 @@ public class Order extends Parcel implements AntReceiver, TickListener, EnergyUs
             if (explorationAnt.getPrimaryAgent() == this) {
                 // The exploration ant was sent out by this order and has returned
                 // Set the boolean flag to true for this particular ant
-                followupAnts.values().stream()
-                    .flatMap(List::stream)
-                    .filter(o -> o.first == explorationAnt)
-                    .forEach(o -> o.second = true);
+                followupAntsPresence.replace(explorationAnt, true);
             } else {
                 explorationAnt.setSecondaryAgent(this);
                 List<AntReceiver> travelledPath = explorationAnt.addHopTravelledPath(this);
@@ -130,9 +128,11 @@ public class Order extends Parcel implements AntReceiver, TickListener, EnergyUs
                     ExplorationAnt newAnt =
                         new ExplorationAnt(this, ExplorationAnt.AntDestination.ChargingPoint, hopCount+1);
                     energyModel.getChargingPoint().receiveAnt(newAnt);
-                    followupAnts.put(explorationAnt, new ArrayList<>(Arrays.asList(new Tuple<>(newAnt, false))));
+
+                    followupAnts.put(explorationAnt, new ArrayList<>(Arrays.asList(newAnt)));
+                    followupAntsPresence.put(newAnt, false);
                 } else {
-                    List<Tuple<ExplorationAnt, Boolean>> newAnts = new ArrayList<>();
+                    List<ExplorationAnt> newAnts = new ArrayList<>();
 
                     for (Order order : ordersWithinDistance) {
                         // Make sure no loops or orders which are already reserved are considered
@@ -142,15 +142,16 @@ public class Order extends Parcel implements AntReceiver, TickListener, EnergyUs
 
                         ExplorationAnt newAnt =
                             new ExplorationAnt(this, ExplorationAnt.AntDestination.Order, hopCount+1);
-                        newAnts.add(new Tuple<>(newAnt, false));
+                        newAnts.add(newAnt);
                         order.receiveAnt(newAnt);
                     }
                     ExplorationAnt newAnt =
                         new ExplorationAnt(this, ExplorationAnt.AntDestination.ChargingPoint, hopCount+1);
-                    newAnts.add(new Tuple<>(newAnt, false));
+                    newAnts.add(newAnt);
                     energyModel.getChargingPoint().receiveAnt(newAnt);
 
                     followupAnts.put(explorationAnt, newAnts);
+                    newAnts.forEach(o -> followupAntsPresence.put(o, false));
                 }
             }
         }
@@ -178,20 +179,20 @@ public class Order extends Parcel implements AntReceiver, TickListener, EnergyUs
 
     private void checkReturnExplorationAnts() {
         List<ExplorationAnt> antsToReturn = new ArrayList<>();
-        for (Map.Entry<ExplorationAnt,List<Tuple<ExplorationAnt, Boolean>>> entry : followupAnts.entrySet()) {
+        for (Map.Entry<ExplorationAnt, List<ExplorationAnt>> entry : followupAnts.entrySet()) {
             // If all the sent out exploration ants have returned
-            if (entry.getValue().stream().allMatch(o -> o.second)) {
+            if (entry.getValue().stream().allMatch(o -> followupAntsPresence.get(o))) {
                 ExplorationAnt originalAnt = entry.getKey();
 
                 originalAnt.addPathEntries(entry.getValue().stream()
-                    .map(o -> o.first.getPaths())
+                    .map(ExplorationAnt::getPaths)
                     .flatMap(List::stream)
                     .collect(Collectors.toList()));
 
                 // TODO add way to get most recent occupation percentage of charging point (i.e. biggest hop count of path)
-                for (Tuple<ExplorationAnt, Boolean> tuple : entry.getValue()) {
-                    if (tuple.first.getChargingPointOccupations() != null) {
-                        originalAnt.setChargingPointOccupations(tuple.first.getChargingPointOccupations());
+                for (ExplorationAnt ant : entry.getValue()) {
+                    if (ant.getChargingPointOccupations() != null) {
+                        originalAnt.setChargingPointOccupations(ant.getChargingPointOccupations());
                     }
                 }
                 antsToReturn.add(originalAnt);
@@ -199,6 +200,7 @@ public class Order extends Parcel implements AntReceiver, TickListener, EnergyUs
         }
 
         for (ExplorationAnt ant : antsToReturn) {
+            followupAnts.get(ant).forEach(o -> followupAntsPresence.remove(o));
             followupAnts.remove(ant);
             temporaryAnts.add(ant);
         }

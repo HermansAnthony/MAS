@@ -13,12 +13,7 @@ public class ExplorationAnt extends Ant {
     private int hopCount;
 
     public ExplorationAnt(AntReceiver source, AntDestination destination) {
-        super(source);
-        this.paths = new ArrayList<>();
-        this.travelledPath = new ArrayList<>();
-        this.destination = destination;
-        this.hopCount = 1;
-        this.chargingPointOccupations = null;
+        this(source, destination, 1);
     }
 
     public ExplorationAnt(AntReceiver source, AntDestination destination, int hopCount) {
