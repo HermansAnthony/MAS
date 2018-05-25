@@ -220,5 +220,8 @@ public class Order extends Parcel implements AntReceiver, TickListener, EnergyUs
         this.energyModel = energyModel;
     }
 
+    public String toString() {
+        return "<Order: " + this.getNeededCapacity() + " grams>";
+    }
 
 }

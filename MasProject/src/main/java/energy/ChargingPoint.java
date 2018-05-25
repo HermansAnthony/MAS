@@ -238,6 +238,10 @@ public class ChargingPoint implements AntReceiver, RoadUser, EnergyUser, TickLis
             this.getOccupationPercentage(DroneHW.class, true)));
     }
 
+    public String toString() {
+        return "<ChargingPoint: " + this.getLocation() + ">";
+    }
+
 
     public ChargingPointMeasurement getAverageOccupation() {
         return monitor.getAverageOccupation();
