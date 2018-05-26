@@ -71,6 +71,14 @@ public class ExplorationAnt extends Ant {
         return travelledPath;
     }
 
+    public List<AntUser> getTravelledPath() {
+        return travelledPath;
+    }
+
+    public void setTravelledPath(List<AntUser> travelledPath) {
+        this.travelledPath = travelledPath;
+    }
+
     @Override
     public void returnToPrimaryAgent() {
         primaryAgent.receiveExplorationAnt(this);

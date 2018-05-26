@@ -3,7 +3,7 @@ package ant;
 public abstract class Ant {
 
     AntUser primaryAgent;
-    AntUser secondaryAgent; // TODO advanced exploration ants going to multiple nodes -> sort of planning
+    AntUser secondaryAgent;
 
     Ant(AntUser primaryAgent) {
         this.primaryAgent = primaryAgent;

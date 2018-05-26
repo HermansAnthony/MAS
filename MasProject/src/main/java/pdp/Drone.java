@@ -28,7 +28,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
     private static int nextID = 0;
@@ -227,7 +226,6 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
         double bestMerit = Double.NEGATIVE_INFINITY;
         AntUser bestIntention = null;
 
-        // TODO get best merit for paths
         for (ExplorationAnt ant : explorationAnts.keySet()) {
             for (List<AntUser> path : ant.getPaths()) {
                 double merit = determineBenefitsPath(path, timeLapse, ant.getChargingPointOccupations().get(this.getClass()));
@@ -241,6 +239,18 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
         return new Tuple<>(bestIntention, bestMerit);
     }
 
+    /**
+     * Determines the merit for a path. Paths with higher merit are more beneficial to drones than paths with low merit.
+     * Used heuristics (in respective order):
+     *  - battery life
+     *  - order urgency
+     *  - travel distance
+     *  - charging point occupation
+     * @param path The path to be evaluated.
+     * @param timeLapse The time at which this is calculated.
+     * @param occupationPercentage the occupation of the chargers for this specific drone type.
+     * @return The merit associated with the specific path.
+     */
     private double determineBenefitsPath(List<AntUser> path, TimeLapse timeLapse, double occupationPercentage) {
         double merit = 0;
         RoadModel rm = getRoadModel();
@@ -333,97 +343,9 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
         destination.receiveIntentionAnt(ant);
     }
 
-    private util.Tuple<AntUser,Double> getBestIntention(TimeLapse timeLapse) {
-        AntUser bestDestination = null;
-        double bestMerit = Double.NEGATIVE_INFINITY;
-
-        for (ExplorationAnt ant : explorationAnts.keySet().stream()
-            .filter(o -> o.destination == ExplorationAnt.AntDestination.Order).collect(Collectors.toList())) {
-            Order order = (Order) ant.getSecondaryAgent();
-            if (order.isReserved() || order.getNeededCapacity() > this.getCapacity())
-                continue;
-
-
-            double merit = determineBenefits(getRoadModel().getPosition(this), order, timeLapse);
-            if (merit < 0) {
-                // Order is impossible to be completed by the drone
-                continue;
-            }
-
-            if (merit > bestMerit) {
-                bestMerit = merit;
-                bestDestination = order;
-            }
-        }
-
-        for (ExplorationAnt ant : explorationAnts.keySet().stream()
-            .filter(o -> o.destination == ExplorationAnt.AntDestination.ChargingPoint).collect(Collectors.toList())) {
-            ChargingPoint chargingPoint = (ChargingPoint) ant.getSecondaryAgent();
-
-            double merit = determineChargeBenefits(ant.getChargingPointOccupations().get(this.getClass()), this.battery.fullyCharged());
-
-            if (merit > bestMerit) {
-                bestMerit = merit;
-                bestDestination = chargingPoint;
-            }
-        }
-
-        return new Tuple<>(bestDestination, bestMerit);
-    }
-
     private double determineChargeBenefits(double chargingPointOccupation, boolean batteryFull) {
         return batteryFull || chargingPointOccupation == 1 ?
             Double.NEGATIVE_INFINITY : 100 * (1 - chargingPointOccupation);
-    }
-
-
-    /**
-     * Returns the merit for a certain order. Orders with higher merit are more beneficial to drones than order with low merit.
-     * Used heuristics (in respective order):
-     *  - battery life
-     *  - order urgency
-     *  - travel distance
-     * @param startLocation the location at which the drone starts.
-     * @param order The order for which the merit is calculated.
-     * @param timeLapse The time at which this is calculated.
-     * @return The merit associated with the specific order.
-     */
-    private double determineBenefits(Point startLocation, Order order, TimeLapse timeLapse) {
-        double merit = 0;
-
-        RoadModel rm = getRoadModel();
-        EnergyModel em = getEnergyModel();
-
-
-        // Determine the total battery capacity that will be used for this specific order if it is chosen.
-        // If the usage exceeds the current battery capacity, return -1 to make sure this order is not chosen.
-        // Otherwise, choose orders in favour of using as little of the remaining battery capacity as possible.
-        double distancePickup = rm.getDistanceOfPath(rm.getShortestPathTo(startLocation, order.getPickupLocation())).doubleValue(SI.METER);
-        double distanceDeliver = rm.getDistanceOfPath(rm.getShortestPathTo(order.getPickupLocation(), order.getDeliveryLocation())).doubleValue(SI.METER);
-        double distanceCharge = rm.getDistanceOfPath(rm.getShortestPathTo(order.getDeliveryLocation(), em.getChargingPoint().getLocation())).doubleValue(SI.METER);
-        double neededBatteryLevel = BatteryCalculations.calculateNecessaryBatteryLevel(
-            this, distancePickup, distanceDeliver, distanceCharge, order.getNeededCapacity());
-        if (neededBatteryLevel > this.battery.getBatteryLevel()) {
-            return Double.NEGATIVE_INFINITY;
-        }
-
-        merit += (1 - (neededBatteryLevel / this.battery.getBatteryLevel())) * 100;
-
-
-        // Favour the orders which are closer to their specific deadline.
-        double timeLeft = order.getDeliveryTimeWindow().end() - timeLapse.getTime();
-        double totalTimeOrder = order.getDeliveryTimeWindow().end() - order.getOrderAnnounceTime();
-        double percentageTimeLeft = timeLeft / totalTimeOrder;
-        double meritPercentageTime = order.getDeliveryTimeWindow().end() <= timeLapse.getTime()
-            ? 1.5 : (1 - percentageTimeLeft);
-
-        merit += meritPercentageTime * 200;
-
-        // Favour the orders which use up least of the drone's current travel capacity.
-        double travelDistance = distancePickup + distanceDeliver + distanceCharge;
-        merit += (1 - (travelDistance / getTravelCapacity())) * 100;
-
-        return merit;
     }
 
     /**
@@ -533,16 +455,19 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
 
     public abstract String getDroneString();
 
-    // Returns the interval of the battery level of the drone
-    // 0 indicates the drone is charging
-    // 1 indicates the drone is 100-80% charged
-    // 2 indicates the drone is 80-60% charged
-    // 3 indicates the drone is 60-40% charged
-    // 4 indicates the drone is 40-20% charged
-    // 5 indicates the drone is 20-0% charged
-    public int getChargingStatus(){
+    /**
+     * Returns the interval of the battery level of the drone.
+     *  - 0 indicates the drone is charging
+     *  - 1 indicates the drone is 100-80% charged
+     *  - 2 indicates the drone is 80-60% charged
+     *  - 3 indicates the drone is 60-40% charged
+     *  - 4 indicates the drone is 40-20% charged
+     *  - 5 indicates the drone is 20-0% charged
+     * @return the interval value as mentioned above
+     */
+    public int getChargingStatus() {
         if (chargingStatus == ChargingStatus.Charging) return 0;
-        double chargeStatus = battery.getBatteryLevel()/battery.getMaxCapacity();
+        double chargeStatus = battery.getBatteryLevel() / battery.getMaxCapacity();
         if (chargeStatus >= 0.80) return 1;
         if (chargeStatus >= 0.60) return 2;
         if (chargeStatus >= 0.40) return 3;
@@ -583,14 +508,13 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
         return getDroneString();
     }
 
+    // TODO: explanation
     private enum delegateMasState {
-//        TODO explanation
         initialState,
         spawnExplorationAnts,
         intentionAntReturned,
         explorationAntsReturned,
         continueReservation
-
     }
 
     private enum ChargingStatus {

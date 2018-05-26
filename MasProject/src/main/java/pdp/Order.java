@@ -150,6 +150,7 @@ public class Order extends Parcel implements AntUser, TickListener, EnergyUser {
                     }
 
                     ExplorationAnt newAnt = new ExplorationAnt(this, AntDestination.Order, hopCount+1);
+                    newAnt.setTravelledPath(travelledPath);
                     newAnts.add(newAnt);
                     order.receiveExplorationAnt(newAnt);
                 }
