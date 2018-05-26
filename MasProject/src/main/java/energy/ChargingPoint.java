@@ -55,7 +55,7 @@ public class ChargingPoint implements AntUser, RoadUser, EnergyUser, TickListene
     }
 
     private void cancelReservation(Drone drone) {
-        assert(this.dronePresent(drone));
+        assert(this.dronePresent(drone, true));
         List<Tuple<Drone, Boolean>> drones = chargers.get(drone.getClass());
         // Remove the drone from the charger
         drones.set(drones.indexOf(drones.stream()
@@ -68,7 +68,7 @@ public class ChargingPoint implements AntUser, RoadUser, EnergyUser, TickListene
     }
 
     public void chargeDrone(Drone drone) {
-        boolean dronePresent = dronePresent(drone);
+        boolean dronePresent = dronePresent(drone, true);
         if (!dronePresent) {
             System.err.println("Drone not reserved yet, unable to charge.");
         } else {
@@ -102,9 +102,10 @@ public class ChargingPoint implements AntUser, RoadUser, EnergyUser, TickListene
         return chargers.get(Drone);
     }
 
-    public boolean dronePresent(Drone drone) {
+    public boolean dronePresent(Drone drone, boolean countReservation) {
         return chargers.get(drone.getClass()).stream()
             .filter(Objects::nonNull)
+            .filter(o -> countReservation || o.second)
             .anyMatch(o -> o.first == drone);
     }
 
@@ -179,7 +180,7 @@ public class ChargingPoint implements AntUser, RoadUser, EnergyUser, TickListene
     public void receiveIntentionAnt(IntentionAnt ant) {
         // Can do a cast to Drone here since intention ants only originate from drones.
         Drone drone = (Drone) ant.getPrimaryAgent();
-        if (!dronePresent(drone)) {
+        if (!dronePresent(drone, true)) {
             // The drone wishes to reserve a spot in the charger
             if (!chargersOccupied(drone)) {
                 this.reserveCharger(drone);
@@ -189,6 +190,7 @@ public class ChargingPoint implements AntUser, RoadUser, EnergyUser, TickListene
             }
         } else if (timeoutReservations.containsKey(ant.getPrimaryAgent())) {
             timeoutReservations.replace(drone, TIMEOUT_RESERVATION);
+            ant.reservationApproved = true;
         }
 
         synchronized (temporaryAnts) {
@@ -210,7 +212,7 @@ public class ChargingPoint implements AntUser, RoadUser, EnergyUser, TickListene
 
         this.charge(timeLapse);
         for (Drone drone : this.redeployChargedDrones()) {
-            drone.stopCharging();
+            drone.stopCharging(timeLapse);
         }
 
         synchronized (temporaryAnts) {

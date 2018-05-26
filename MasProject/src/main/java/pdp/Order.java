@@ -228,5 +228,4 @@ public class Order extends Parcel implements AntUser, TickListener, EnergyUser {
     public String toString() {
         return "<Order: " + this.getNeededCapacity() + " grams>";
     }
-
 }
