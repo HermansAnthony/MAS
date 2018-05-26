@@ -1,7 +1,7 @@
 package energy;
 
 import ant.Ant;
-import ant.AntReceiver;
+import ant.AntUser;
 import ant.ExplorationAnt;
 import ant.IntentionAnt;
 import com.github.rinde.rinsim.core.model.road.RoadModel;
@@ -21,7 +21,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class ChargingPoint implements AntReceiver, RoadUser, EnergyUser, TickListener {
+public class ChargingPoint implements AntUser, RoadUser, EnergyUser, TickListener {
     private static final Integer TIMEOUT_RESERVATION = 20;
     private Point location;
     private Map<Class<?>, List<Tuple<Drone, Boolean>>> chargers; // Keeps a list per drone type of chargers
@@ -155,34 +155,6 @@ public class ChargingPoint implements AntReceiver, RoadUser, EnergyUser, TickLis
         return location;
     }
 
-    @Override
-    public void receiveAnt(Ant ant) {
-        if (ant instanceof ExplorationAnt) {
-            ExplorationAnt explorationAnt = (ExplorationAnt) ant;
-            explorationAnt.setChargingPointOccupations(this.getOccupations(true));
-            explorationAnt.setSecondaryAgent(this);
-        } else if (ant instanceof IntentionAnt) {
-            IntentionAnt intentionAnt = (IntentionAnt) ant;
-            // Can do a cast to Drone here since intention ants only originate from drones.
-            Drone drone = (Drone) intentionAnt.getPrimaryAgent();
-            if (!dronePresent(drone)) {
-                // The drone wishes to reserve a spot in the charger
-                if (!chargersOccupied(drone)) {
-                    this.reserveCharger(drone);
-                    intentionAnt.reservationApproved = true;
-                } else {
-                    intentionAnt.reservationApproved = false;
-                }
-            } else if (timeoutReservations.containsKey(intentionAnt.getPrimaryAgent())) {
-                timeoutReservations.replace(drone, TIMEOUT_RESERVATION);
-            }
-        }
-
-        synchronized (temporaryAnts) {
-            temporaryAnts.add(ant);
-        }
-    }
-
     private Map<Class<?>,Double> getOccupations(boolean includeReservations) {
         Map<Class<?>, Double> occupations = new HashMap<>();
 
@@ -191,6 +163,37 @@ public class ChargingPoint implements AntReceiver, RoadUser, EnergyUser, TickLis
         }
 
         return occupations;
+    }
+
+    @Override
+    public void receiveExplorationAnt(ExplorationAnt ant) {
+        ant.setChargingPointOccupations(this.getOccupations(true));
+        ant.setSecondaryAgent(this);
+
+        synchronized (temporaryAnts) {
+            temporaryAnts.add(ant);
+        }
+    }
+
+    @Override
+    public void receiveIntentionAnt(IntentionAnt ant) {
+        // Can do a cast to Drone here since intention ants only originate from drones.
+        Drone drone = (Drone) ant.getPrimaryAgent();
+        if (!dronePresent(drone)) {
+            // The drone wishes to reserve a spot in the charger
+            if (!chargersOccupied(drone)) {
+                this.reserveCharger(drone);
+                ant.reservationApproved = true;
+            } else {
+                ant.reservationApproved = false;
+            }
+        } else if (timeoutReservations.containsKey(ant.getPrimaryAgent())) {
+            timeoutReservations.replace(drone, TIMEOUT_RESERVATION);
+        }
+
+        synchronized (temporaryAnts) {
+            temporaryAnts.add(ant);
+        }
     }
 
     @Override

@@ -1,7 +1,6 @@
 package pdp;
 
-import ant.Ant;
-import ant.AntReceiver;
+import ant.AntUser;
 import ant.ExplorationAnt;
 import ant.IntentionAnt;
 import com.github.rinde.rinsim.core.model.pdp.PDPModel;
@@ -31,7 +30,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
+public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
     private static int nextID = 0;
     private static int RECONSIDERATION_MERIT = 10;
 
@@ -133,7 +132,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
                 // Check if all exploration ants have returned
                 if (!explorationAnts.values().contains(false)) {
                     // Send out an intention ant to the order with the highest merit
-                    Tuple<AntReceiver, Double> intention = getBestIntentionPath(timeLapse);
+                    Tuple<AntUser, Double> intention = getBestIntentionPath(timeLapse);
                     if (intention.first == null) {
                         state = delegateMasState.initialState;
                         break;
@@ -185,7 +184,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
                     // If the intention ant has returned, resend it
                     entry.setValue(false); // Mark the ant as gone
                     entry.getKey().reservationApproved = false;
-                    entry.getKey().destination.receiveAnt(entry.getKey());
+                    entry.getKey().destination.receiveIntentionAnt(entry.getKey());
                 }
 
                 state = delegateMasState.spawnExplorationAnts;
@@ -203,7 +202,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
                     spawnExplorationAnts(false);
                 } else if (!explorationAnts.containsValue(false)) {
                     // Check for reconsiderations
-                    Tuple<AntReceiver, Double> intention = getBestIntentionPath(timeLapse);
+                    Tuple<AntUser, Double> intention = getBestIntentionPath(timeLapse);
                     double meritDifference = intention.second - intentionAnt.entrySet().iterator().next().getKey().merit;
                     if ((meritDifference > RECONSIDERATION_MERIT) && (intention.first != null)) {
                         if (reconsiderAction(intention, timeLapse)) {
@@ -224,13 +223,13 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
         }
     }
 
-    private Tuple<AntReceiver,Double> getBestIntentionPath(TimeLapse timeLapse) {
+    private Tuple<AntUser,Double> getBestIntentionPath(TimeLapse timeLapse) {
         double bestMerit = Double.NEGATIVE_INFINITY;
-        AntReceiver bestIntention = null;
+        AntUser bestIntention = null;
 
         // TODO get best merit for paths
         for (ExplorationAnt ant : explorationAnts.keySet()) {
-            for (List<AntReceiver> path : ant.getPaths()) {
+            for (List<AntUser> path : ant.getPaths()) {
                 double merit = determineBenefitsPath(path, timeLapse, ant.getChargingPointOccupations().get(this.getClass()));
 
                 if (merit > bestMerit) {
@@ -242,7 +241,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
         return new Tuple<>(bestIntention, bestMerit);
     }
 
-    private double determineBenefitsPath(List<AntReceiver> path, TimeLapse timeLapse, double occupationPercentage) {
+    private double determineBenefitsPath(List<AntUser> path, TimeLapse timeLapse, double occupationPercentage) {
         double merit = 0;
         RoadModel rm = getRoadModel();
         EnergyModel em = getEnergyModel();
@@ -253,7 +252,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
         long startTime = timeLapse.getTime();
 
 
-        for (AntReceiver destination : path) {
+        for (AntUser destination : path) {
             if (destination instanceof ChargingPoint) {
                 merit += determineChargeBenefits(occupationPercentage, startBatteryLevel == this.battery.getMaxCapacity());
                 continue;
@@ -310,7 +309,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
         return merit / path.size();
     }
 
-    private boolean reconsiderAction(Tuple<AntReceiver,Double> intention, TimeLapse timeLapse) {
+    private boolean reconsiderAction(Tuple<AntUser,Double> intention, TimeLapse timeLapse) {
         PDPModel pm = getPDPModel();
 
         if (chargingStatus == ChargingStatus.Charging) {
@@ -328,14 +327,14 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
         return true;
     }
 
-    private void spawnIntentionAnt(AntReceiver destination, double merit) {
+    private void spawnIntentionAnt(AntUser destination, double merit) {
         IntentionAnt ant = new IntentionAnt(this, destination, merit);
         intentionAnt.put(ant, false);
-        destination.receiveAnt(ant);
+        destination.receiveIntentionAnt(ant);
     }
 
-    private util.Tuple<AntReceiver,Double> getBestIntention(TimeLapse timeLapse) {
-        AntReceiver bestDestination = null;
+    private util.Tuple<AntUser,Double> getBestIntention(TimeLapse timeLapse) {
+        AntUser bestDestination = null;
         double bestMerit = Double.NEGATIVE_INFINITY;
 
         for (ExplorationAnt ant : explorationAnts.keySet().stream()
@@ -440,13 +439,13 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
             Order order = (Order) parcel;
             ExplorationAnt explorationAnt = new ExplorationAnt(this, ExplorationAnt.AntDestination.Order);
             explorationAnts.put(explorationAnt, false);
-            order.receiveAnt(explorationAnt);
+            order.receiveExplorationAnt(explorationAnt);
         }
 
         if (sendToChargingPoint) {
             ExplorationAnt explorationAnt = new ExplorationAnt(this, ExplorationAnt.AntDestination.ChargingPoint);
             explorationAnts.put(explorationAnt, false);
-            getEnergyModel().getChargingPoint().receiveAnt(explorationAnt);
+            getEnergyModel().getChargingPoint().receiveExplorationAnt(explorationAnt);
         }
     }
 
@@ -516,23 +515,20 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntReceiver {
         return energyModel.get();
     }
 
-    public void receiveAnt(Ant ant) {
-        if (ant instanceof ExplorationAnt) {
+    public void receiveExplorationAnt(ExplorationAnt ant) {
+        // Note: It may happen that some ants which have been sent out are not needed anymore by the drone.
+        //       In that case, the ant is dropped.
+        try {
+            explorationAnts.replace(ant, true);
+        } catch (Exception e) {}
+    }
 
-            // Note: It may happen that some ants which have been sent out are not needed anymore by the drone.
-            //       In that case, the ant is dropped.
-            try {
-                explorationAnts.replace((ExplorationAnt) ant, true);
-            } catch (Exception e) {
-                System.out.println("Exploration ant dropped.");
-            }
-        } else if (ant instanceof IntentionAnt) {
-            try {
-                intentionAnt.replace((IntentionAnt) ant, true);
-            } catch (Exception e) {
-                System.out.println("Intention ant dropped.");
-            }
-        }
+    public void receiveIntentionAnt(IntentionAnt ant) {
+        // Note: It may happen that some ants which have been sent out are not needed anymore by the drone.
+        //       In that case, the ant is dropped.
+        try {
+            intentionAnt.replace(ant, true);
+        } catch (Exception e) {}
     }
 
     public abstract String getDroneString();

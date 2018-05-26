@@ -1,8 +1,9 @@
 package pdp;
 
 import ant.Ant;
-import ant.AntReceiver;
+import ant.AntUser;
 import ant.ExplorationAnt;
+import ant.ExplorationAnt.AntDestination;
 import ant.IntentionAnt;
 import com.github.rinde.rinsim.core.model.pdp.PDPModel;
 import com.github.rinde.rinsim.core.model.pdp.Parcel;
@@ -20,9 +21,11 @@ import energy.EnergyUser;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class Order extends Parcel implements AntReceiver, TickListener, EnergyUser {
+public class Order extends Parcel implements AntUser, TickListener, EnergyUser {
 
     private static final int MAXIMUM_HOPCOUNT = 3;
+    private static final int RADIUS_HOP = 1000;
+
     private Queue<Ant> temporaryAnts;
     // TODO split up Map for returning exploration ants
     private Map<ExplorationAnt, List<ExplorationAnt>> followupAnts;
@@ -55,6 +58,11 @@ public class Order extends Parcel implements AntReceiver, TickListener, EnergyUs
         this.roadModel = roadModel;
     }
 
+    @Override
+    public void initEnergyUser(EnergyModel energyModel) {
+        this.energyModel = energyModel;
+    }
+
     synchronized private void reserve(Vehicle vehicle) {
         reserver = Optional.of(vehicle);
     }
@@ -63,120 +71,20 @@ public class Order extends Parcel implements AntReceiver, TickListener, EnergyUs
         return reserver.isPresent();
     }
 
-    @Override
-    public void tick(TimeLapse timeLapse) {
-        checkReturnExplorationAnts();
-
-        // Send out all the temporary ants to their respective primary agents.
-        synchronized (temporaryAnts) {
-            while (!temporaryAnts.isEmpty()) {
-                temporaryAnts.remove().returnToPrimaryAgent();
-            }
-        }
-
-    }
-
-
-    @Override
-    public void afterTick(TimeLapse timeLapse) {
-        if (reserver.isPresent()) {
-            timeoutTimer--;
-        }
-
-        if (timeoutTimer <= 0) {
-            reserver = Optional.absent();
-        }
-    }
-
-    private String getOrderDescription(){
-        // TODO move this to the description down below
-        String result = "location: ";
-        try {
-            result += this.getRoadModel().getPosition(this);
-        } catch (Exception e) {
-            result += "in transit";
-        }
-        result += ", payload: " + this.getNeededCapacity() + " grams";
-        return result;
-    }
-
     private void resetTimeout() {
         timeoutTimer = TIMEOUT_RESERVE;
     }
 
-    @Override
-    public void receiveAnt(Ant ant) {
-        if (ant instanceof ExplorationAnt) {
-            ExplorationAnt explorationAnt = (ExplorationAnt) ant;
-
-            if (explorationAnt.getPrimaryAgent() == this) {
-                // The exploration ant was sent out by this order and has returned
-                // Set the boolean flag to true for this particular ant
-                followupAntsPresence.replace(explorationAnt, true);
-            } else {
-                explorationAnt.setSecondaryAgent(this);
-                List<AntReceiver> travelledPath = explorationAnt.addHopTravelledPath(this);
-
-                // The order is the destination for the ant
-                // Send out more exploration ants if necessary
-                int hopCount = explorationAnt.getHopCount();
-                Collection<Order> ordersWithinDistance =
-                    RoadModels.findObjectsWithinRadius(this.getDeliveryLocation(), roadModel, 1000, Order.class);
-
-                if (hopCount == MAXIMUM_HOPCOUNT) {
-                    // Send an exploration ant to the charging point
-                    ExplorationAnt newAnt =
-                        new ExplorationAnt(this, ExplorationAnt.AntDestination.ChargingPoint, hopCount+1);
-                    energyModel.getChargingPoint().receiveAnt(newAnt);
-
-                    followupAnts.put(explorationAnt, new ArrayList<>(Arrays.asList(newAnt)));
-                    followupAntsPresence.put(newAnt, false);
-                } else {
-                    List<ExplorationAnt> newAnts = new ArrayList<>();
-
-                    for (Order order : ordersWithinDistance) {
-                        // Make sure no loops or orders which are already reserved are considered
-                        if (travelledPath.contains(order) || order.isReserved()) {
-                            continue;
-                        }
-
-                        ExplorationAnt newAnt =
-                            new ExplorationAnt(this, ExplorationAnt.AntDestination.Order, hopCount+1);
-                        newAnts.add(newAnt);
-                        order.receiveAnt(newAnt);
-                    }
-                    ExplorationAnt newAnt =
-                        new ExplorationAnt(this, ExplorationAnt.AntDestination.ChargingPoint, hopCount+1);
-                    newAnts.add(newAnt);
-                    energyModel.getChargingPoint().receiveAnt(newAnt);
-
-                    followupAnts.put(explorationAnt, newAnts);
-                    newAnts.forEach(o -> followupAntsPresence.put(o, false));
-                }
-            }
-        }
-        else if (ant instanceof IntentionAnt) {
-            IntentionAnt intentionAnt = (IntentionAnt) ant;
-            if (!this.isReserved()) {
-                // Can do a cast to Drone here since intention ants only originate from drones.
-                this.reserve((Drone) intentionAnt.getPrimaryAgent());
-                intentionAnt.reservationApproved = true;
-                resetTimeout();
-            } else {
-                if (reserver.get().equals(intentionAnt.getPrimaryAgent())) {
-                    resetTimeout();
-                    intentionAnt.reservationApproved = true;
-                } else {
-                    intentionAnt.reservationApproved = false;
-                }
-            }
-            synchronized(temporaryAnts) {
-                temporaryAnts.add(ant);
-            }
-        }
+    public RoadUser getCustomer() {
+        return customer;
     }
 
 
+    /**
+     * Checks if all the exploration ants sent out as reaction to a specific exploration ant have returned.
+     * If all the ants have returned, the paths they explored are added to the original ant.
+     * The original ant is then added to the list of ants that should be returned to their source.
+     */
     private void checkReturnExplorationAnts() {
         List<ExplorationAnt> antsToReturn = new ArrayList<>();
         for (Map.Entry<ExplorationAnt, List<ExplorationAnt>> entry : followupAnts.entrySet()) {
@@ -208,19 +116,114 @@ public class Order extends Parcel implements AntReceiver, TickListener, EnergyUs
 
 
     @Override
-    public String getDescription() {
-        return "Order - " + getOrderDescription();
-    }
+    public void receiveExplorationAnt(ExplorationAnt ant) {
+        if (ant.getPrimaryAgent() == this) {
+            // The exploration ant was sent out by this order and has returned
+            // Set the boolean flag to true for this particular ant (marking it as returned)
+            followupAntsPresence.replace(ant, true);
+        } else {
+            // The order is the destination for the ant
+            ant.setSecondaryAgent(this);
+            List<AntUser> travelledPath = ant.addHopTravelledPath(this);
 
-    public RoadUser getCustomer() {
-        return customer;
+            int hopCount = ant.getHopCount();
+
+            // Send out more exploration ants if necessary
+            if (hopCount == MAXIMUM_HOPCOUNT) {
+                // Send an exploration ant to the charging point to finish the explored path
+                ExplorationAnt newAnt = new ExplorationAnt(this, AntDestination.ChargingPoint, hopCount+1);
+                energyModel.getChargingPoint().receiveExplorationAnt(newAnt);
+
+                followupAnts.put(ant, new ArrayList<>(Arrays.asList(newAnt)));
+                followupAntsPresence.put(newAnt, false);
+            } else {
+                // Send exploration ants to all viable hops within a given radius, and one to the charging point
+                Collection<Order> ordersWithinDistance =
+                    RoadModels.findObjectsWithinRadius(this.getDeliveryLocation(), roadModel, RADIUS_HOP, Order.class);
+                List<ExplorationAnt> newAnts = new ArrayList<>();
+
+                for (Order order : ordersWithinDistance) {
+                    // Make sure no loops or orders which are already reserved are considered
+                    // TODO can also keep maximum capacity in exploration ants in order to filter out more orders here
+                    if (travelledPath.contains(order) || order.isReserved()) {
+                        continue;
+                    }
+
+                    ExplorationAnt newAnt = new ExplorationAnt(this, AntDestination.Order, hopCount+1);
+                    newAnts.add(newAnt);
+                    order.receiveExplorationAnt(newAnt);
+                }
+
+                // Charging point exploration ant
+                ExplorationAnt newAnt = new ExplorationAnt(this, AntDestination.ChargingPoint, hopCount+1);
+                newAnts.add(newAnt);
+                energyModel.getChargingPoint().receiveExplorationAnt(newAnt);
+
+                followupAnts.put(ant, newAnts);
+                newAnts.forEach(o -> followupAntsPresence.put(o, false));
+            }
+        }
     }
 
     @Override
-    public void initEnergyUser(EnergyModel energyModel) {
-        this.energyModel = energyModel;
+    public void receiveIntentionAnt(IntentionAnt ant) {
+        if (!this.isReserved()) {
+            // If this order has not been reserved yet, reserve it for the drone.
+            // NOTE: can do a cast to Drone here since intention ants only originate from drones.
+            this.reserve((Drone) ant.getPrimaryAgent());
+            ant.reservationApproved = true;
+            resetTimeout();
+        } else {
+            // The order has already been reserved, either deny the reservation for the drone or
+            // refresh the timer if it the ant is meant as a reconfirmation of the reservation.
+            if (reserver.get().equals(ant.getPrimaryAgent())) {
+                resetTimeout();
+                ant.reservationApproved = true;
+            } else {
+                ant.reservationApproved = false;
+            }
+        }
+        synchronized(temporaryAnts) {
+            temporaryAnts.add(ant);
+        }
     }
 
+    @Override
+    public void tick(TimeLapse timeLapse) {
+        checkReturnExplorationAnts();
+
+        // Send out all the temporary ants to their respective primary agents.
+        synchronized (temporaryAnts) {
+            while (!temporaryAnts.isEmpty()) {
+                temporaryAnts.remove().returnToPrimaryAgent();
+            }
+        }
+
+    }
+
+
+    @Override
+    public void afterTick(TimeLapse timeLapse) {
+        if (reserver.isPresent()) {
+            timeoutTimer--;
+        }
+
+        if (timeoutTimer <= 0) {
+            reserver = Optional.absent();
+        }
+    }
+
+    @Override
+    public String getDescription() {
+        RoadModel rm = getRoadModel();
+        String result = "";
+        result += "Order - location: ";
+        result += rm.containsObject(this) ? rm.getPosition(this).toString() : "in transit";
+        result += ", payload: " + this.getNeededCapacity() + " grams";
+        return result;
+    }
+
+    // TODO remove, here for debugging
     public String toString() {
         return "<Order: " + this.getNeededCapacity() + " grams>";
     }

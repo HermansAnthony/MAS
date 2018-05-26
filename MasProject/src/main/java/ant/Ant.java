@@ -2,28 +2,26 @@ package ant;
 
 public abstract class Ant {
 
-    private AntReceiver primaryAgent;
-    private AntReceiver secondaryAgent; // TODO advanced exploration ants going to multiple nodes -> sort of planning
+    AntUser primaryAgent;
+    AntUser secondaryAgent; // TODO advanced exploration ants going to multiple nodes -> sort of planning
 
-    Ant(AntReceiver primaryAgent) {
+    Ant(AntUser primaryAgent) {
         this.primaryAgent = primaryAgent;
         this.secondaryAgent = null;
     }
 
 
-    public void setSecondaryAgent(AntReceiver secondaryAgent) {
+    public void setSecondaryAgent(AntUser secondaryAgent) {
         this.secondaryAgent = secondaryAgent;
     }
 
-    public AntReceiver getSecondaryAgent() {
+    public AntUser getSecondaryAgent() {
         return secondaryAgent;
     }
 
-    public void returnToPrimaryAgent() {
-        primaryAgent.receiveAnt(this);
-    }
+    public abstract void returnToPrimaryAgent();
 
-    public AntReceiver getPrimaryAgent() {
+    public AntUser getPrimaryAgent() {
         return primaryAgent;
     }
 }
