@@ -9,7 +9,6 @@ import com.github.rinde.rinsim.core.model.road.RoadUser;
 import com.github.rinde.rinsim.core.model.time.TickListener;
 import com.github.rinde.rinsim.core.model.time.TimeLapse;
 import com.github.rinde.rinsim.geom.Point;
-import org.jetbrains.annotations.NotNull;
 import pdp.Drone;
 import pdp.DroneHW;
 import pdp.DroneLW;
@@ -17,9 +16,11 @@ import util.ChargingPointMeasurement;
 import util.ChargingPointMonitor;
 import util.Tuple;
 
+import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
 
 public class ChargingPoint implements AntUser, RoadUser, EnergyUser, TickListener {
     private static final Integer TIMEOUT_RESERVATION = 20;
@@ -42,7 +43,7 @@ public class ChargingPoint implements AntUser, RoadUser, EnergyUser, TickListene
     }
 
     @Override
-    public void initRoadUser(@NotNull RoadModel roadModel) {
+    public void initRoadUser(@Nonnull RoadModel roadModel) {
         roadModel.addObjectAt(this, location);
     }
 
@@ -156,6 +157,10 @@ public class ChargingPoint implements AntUser, RoadUser, EnergyUser, TickListene
         return location;
     }
 
+    public ChargingPointMeasurement getAverageOccupation() {
+        return monitor.getAverageOccupation();
+    }
+
     private Map<Class<?>,Double> getOccupations(boolean includeReservations) {
         Map<Class<?>, Double> occupations = new HashMap<>();
 
@@ -206,7 +211,7 @@ public class ChargingPoint implements AntUser, RoadUser, EnergyUser, TickListene
     }
 
     @Override
-    public void tick(@NotNull TimeLapse timeLapse) {
+    public void tick(@Nonnull TimeLapse timeLapse) {
         if (!timeLapse.hasTimeLeft())
             return;
 
@@ -223,7 +228,7 @@ public class ChargingPoint implements AntUser, RoadUser, EnergyUser, TickListene
     }
 
     @Override
-    public void afterTick(@NotNull TimeLapse timeLapse) {
+    public void afterTick(@Nonnull TimeLapse timeLapse) {
         List<Drone> timeoutDrones = new ArrayList<>();
         for (Map.Entry<Drone, Integer> reservation : timeoutReservations.entrySet()) {
             int newValue = reservation.getValue() - 1;
@@ -245,10 +250,5 @@ public class ChargingPoint implements AntUser, RoadUser, EnergyUser, TickListene
 
     public String toString() {
         return "<ChargingPoint: " + this.getLocation() + ">";
-    }
-
-
-    public ChargingPointMeasurement getAverageOccupation() {
-        return monitor.getAverageOccupation();
     }
 }

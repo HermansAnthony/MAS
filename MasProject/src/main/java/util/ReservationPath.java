@@ -66,7 +66,7 @@ public class ReservationPath {
     // TODO maybe include merit here and change logging to file a bit
     public String toString() {
         return "["
-            + String.join(",", path.stream().map(AntUser::getDescription).collect(Collectors.toList()))
+            + String.join(", ", path.stream().map(AntUser::getDescription).collect(Collectors.toList()))
             + "]";
     }
 }
