@@ -15,6 +15,7 @@ import com.github.rinde.rinsim.core.model.time.TimeLapse;
 import com.google.common.base.Optional;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 public class Order extends Parcel implements AntReceiver, TickListener {
@@ -26,12 +27,16 @@ public class Order extends Parcel implements AntReceiver, TickListener {
     private static int TIMEOUT_RESERVE = 20; // TODO fine grain this value
     private RoadUser customer;
 
+    // Indicates if order has been delivered
+    private boolean delivered;
+
     public Order(ParcelDTO parcelDto, Customer customer) {
         super(parcelDto);
         temporaryAnts = new ArrayList<>();
         reserver = Optional.absent();
         timeoutTimer = TIMEOUT_RESERVE;
         this.customer = customer;
+        this.delivered = false;
     }
 
 
@@ -66,6 +71,28 @@ public class Order extends Parcel implements AntReceiver, TickListener {
 
         if (timeoutTimer <= 0) {
             reserver = Optional.absent();
+        }
+        // Fetch all the parcels which are delivered and verify if this order is in that list
+        // If so write the announcement time and delivery time to a file
+        // which can be aggregated later on by the experiment postprocessor
+        Collection<Parcel> parcels = getPDPModel().getParcels(PDPModel.ParcelState.DELIVERED);
+        if (!delivered) {
+            if (parcels.stream().anyMatch(o -> o.getDto().equals(this.getDto()))) {
+                // TODO write a monitor that writes this to a file
+                delivered = true;
+                long announcementTime = this.getDto().getOrderAnnounceTime();
+                long deliveryTime = timeLapse.getTime();
+                int seconds = (int) (announcementTime / 1000) % 60;
+                int minutes = (int) ((announcementTime / (1000 * 60)) % 60);
+                int hours = (int) ((announcementTime / (1000 * 60 * 60)) % 24);
+                String announcement = String.format("%02d:%02d:%02d", hours, minutes, seconds);
+                seconds = (int) (deliveryTime / 1000) % 60;
+                minutes = (int) ((deliveryTime / (1000 * 60)) % 60);
+                hours = (int) ((deliveryTime / (1000 * 60 * 60)) % 24);
+                String delivery = String.format("%02d:%02d:%02d", hours, minutes, seconds);
+//                System.out.println("Order is announced at " + announcement);
+//                System.out.println("Order is delivered at " + delivery);
+            }
         }
     }
 

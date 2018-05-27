@@ -1,7 +1,7 @@
 Focus on research objective 1 en 3
 In place of two types of ants:
     => use exploration ants (parcels -> charging point)
-    => use intention ants to indicate the which path he wants to follow
+    => use intention ants to indicate which path he wants to follow
 
 At the moment we choose to use fixed rate parcel arrivals.
 

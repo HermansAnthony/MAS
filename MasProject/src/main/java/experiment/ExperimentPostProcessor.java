@@ -1,6 +1,7 @@
 package experiment;
 
 import com.github.rinde.rinsim.core.Simulator;
+import com.github.rinde.rinsim.core.model.pdp.PDPModel;
 import com.github.rinde.rinsim.core.model.road.PlaneRoadModel;
 import com.github.rinde.rinsim.experiment.Experiment.SimArgs;
 import com.github.rinde.rinsim.experiment.PostProcessor;
@@ -28,7 +29,8 @@ public final class ExperimentPostProcessor implements PostProcessor<String> {
                 .getModel(PlaneRoadModel.class).getObjectsOfType(DroneHW.class);
 
         EnergyModel em = sim.getModelProvider().getModel(EnergyModel.class);
-
+        PDPModel pdp = sim.getModelProvider().getModel(PDPModel.class);
+        System.out.println(pdp.getParcels(PDPModel.ParcelState.DELIVERED));
         // Construct a result string based on the simulator state, of course, in
         // actual code the result should not be a string but a value object
         // containing the values of interest.

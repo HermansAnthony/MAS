@@ -1,9 +1,6 @@
 package experiment;
 
-import com.github.rinde.rinsim.core.model.pdp.DefaultPDPModel;
-import com.github.rinde.rinsim.core.model.pdp.Depot;
-import com.github.rinde.rinsim.core.model.pdp.Parcel;
-import com.github.rinde.rinsim.core.model.pdp.ParcelDTO;
+import com.github.rinde.rinsim.core.model.pdp.*;
 import com.github.rinde.rinsim.core.model.road.RoadModelBuilders;
 import com.github.rinde.rinsim.core.model.time.TimeModel;
 import com.github.rinde.rinsim.experiment.Experiment;
@@ -24,17 +21,17 @@ import org.apache.commons.math3.random.RandomGenerator;
 import pdp.Customer;
 import pdp.DroneHW;
 import pdp.DroneLW;
+import pdp.Order;
 import renderer.ChargingPointPanel;
 import renderer.DroneRenderer;
 import renderer.MapRenderer;
 import util.Range;
+import util.Tuple;
 
 import javax.measure.unit.SI;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Scanner;
+import java.util.*;
 
 
 public class DroneExperiment {
@@ -76,15 +73,15 @@ public class DroneExperiment {
     private static final String map = "/leuven2_800x800.png";
 //    private static final String map = "/leuven828.png";
 
-    private DroneExperiment() {}
+    private static Map<Order, Tuple<Long, Long>> ordersInformation;
 
     /**
      * Main method
      */
     public static void main(String[] args) {
         loadStoreLocations("/stores.csv");
+        ordersInformation = new HashMap<>();
         Scenario scenario = createScenario();
-
         ExperimentResults results = Experiment.builder()
             .addConfiguration(MASConfiguration.builder()
                 .addEventHandler(AddDepotEvent.class, AddDepotEvent.namedHandler())
@@ -127,7 +124,6 @@ public class DroneExperiment {
      */
     static Scenario createScenario() {
         Scenario.Builder scenarioBuilder = Scenario.builder();
-
         // Creation of all objects for the scenario
         RandomGenerator rng = new MersenneTwister();
         rng.setSeed(SEED_ORDERS);
@@ -167,7 +163,7 @@ public class DroneExperiment {
                 .withDistanceUnit(SI.METER)
                 .withSpeedUnit(SI.METERS_PER_SECOND)
                 .withMaxSpeed(50))
-            .addModel(DefaultPDPModel.builder())
+            .addModel(DefaultPDPModel.builder().withTimeWindowPolicy(TimeWindowPolicy.TimeWindowPolicies.TARDY_ALLOWED))
             .addModel(DefaultEnergyModel.builder());
 
         // Time and timeouts of scenario
