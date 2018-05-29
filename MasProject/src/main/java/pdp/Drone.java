@@ -1,6 +1,7 @@
 package pdp;
 
 import ant.AntUser;
+import ant.ChargeIntentionAnt;
 import ant.ExplorationAnt;
 import ant.IntentionAnt;
 import com.github.rinde.rinsim.core.model.pdp.PDPModel;
@@ -426,15 +427,16 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
     private void spawnIntentionAnts(List<AntUser> destinations) {
         // Spawn an intention ant for every node on the path
         for (AntUser destination : destinations) {
-            IntentionAnt ant = new IntentionAnt(this, destination);
+            IntentionAnt ant;
+            if (destination instanceof Order) {
+                ant = new IntentionAnt(this, destination);
+            } else {
+                // TODO adjust time frame with calculated values from exploration ants
+                ant = new ChargeIntentionAnt(this, destination, 0, Long.MAX_VALUE);
+            }
             intentionAnt.put(ant, false);
             destination.receiveIntentionAnt(ant);
         }
-
-        // TODO give a time frame when reserving the charging point, otherwise
-        // TODO the chargers would be reserved while the drone could still be
-        // TODO finishing up 3 orders before actually charging
-
     }
 
     /**

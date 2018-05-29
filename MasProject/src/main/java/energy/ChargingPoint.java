@@ -1,9 +1,6 @@
 package energy;
 
-import ant.Ant;
-import ant.AntUser;
-import ant.ExplorationAnt;
-import ant.IntentionAnt;
+import ant.*;
 import com.github.rinde.rinsim.core.model.road.RoadModel;
 import com.github.rinde.rinsim.core.model.road.RoadUser;
 import com.github.rinde.rinsim.core.model.time.TickListener;
@@ -85,7 +82,6 @@ public class ChargingPoint implements AntUser, RoadUser, EnergyUser, TickListene
                 }
             }
         }
-
     }
 
     private boolean chargersOccupied(Drone drone) {
@@ -190,13 +186,19 @@ public class ChargingPoint implements AntUser, RoadUser, EnergyUser, TickListene
 
     @Override
     public void receiveIntentionAnt(IntentionAnt ant) {
+        if (!(ant instanceof ChargeIntentionAnt)) {
+            System.err.println("Only ChargeIntentionAnts should be sent to the charging point.");
+            return;
+        }
+        ChargeIntentionAnt chargeAnt = (ChargeIntentionAnt) ant;
+
         // Can do a cast to Drone here since intention ants only originate from drones.
         Drone drone = (Drone) ant.getPrimaryAgent();
         if (!dronePresent(drone, true)) {
             // The drone wishes to reserve a spot in the charger
             if (!chargersOccupied(drone)) {
                 // TODO temporary for now until intention ant also contains time window of reservation
-                this.reserveCharger(drone, 0, Long.MAX_VALUE);
+                this.reserveCharger(drone, chargeAnt.getBeginTime(), chargeAnt.getEndTime());
                 ant.reservationApproved = true;
             } else {
                 ant.reservationApproved = false;
