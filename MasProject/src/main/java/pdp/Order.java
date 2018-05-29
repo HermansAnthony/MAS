@@ -84,7 +84,12 @@ public class Order extends Parcel implements AntReceiver, TickListener {
                 delivered = true;
                 long announcementTime = this.getDto().getOrderAnnounceTime();
                 long deliveryTime = timeLapse.getTime();
-                timeMonitor.writeToFile(announcementTime, deliveryTime);
+                // The order was delivered too late
+                if (deliveryTime > this.getDto().getDeliveryTimeWindow().end()) {
+                    timeMonitor.writeToFile(this.getDto().getDeliveryTimeWindow().end(), deliveryTime, false);
+                    return;
+                }
+                timeMonitor.writeToFile(announcementTime, deliveryTime, true);
             }
         }
     }

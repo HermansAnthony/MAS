@@ -6,7 +6,8 @@ import java.io.*;
 // These descriptions will be used in the ExperimentPostProcessor
 public class TimeMonitor {
     private static TimeMonitor singleton = new TimeMonitor();
-    private static String fileName;
+    private static String onTime;
+    private static String overDue;
 
     /* A private Constructor prevents any other
      * class from instantiating.
@@ -17,9 +18,14 @@ public class TimeMonitor {
             directory.mkdir();
         }
 
-        this.fileName = "logging/timeInfo.csv";
+        this.onTime = "logging/ordersOnTime.csv";
+        this.overDue = "logging/ordersOverdue.csv";
         // Delete the file if it is already present
-        File tempFile = new File(this.fileName);
+        File tempFile = new File(this.onTime);
+        if (tempFile.isFile()){
+            tempFile.delete();
+        }
+        tempFile = new File(this.overDue);
         if (tempFile.isFile()){
             tempFile.delete();
         }
@@ -30,7 +36,10 @@ public class TimeMonitor {
     }
 
     // Write the announcement time and delivery time to a file
-    public static void writeToFile(long announcement, long delivery) {
+    public static void writeToFile(long announcement, long delivery, boolean orderOnTime) {
+        String fileName = onTime;
+        if (!orderOnTime)
+            fileName = overDue;
         try(
             FileWriter fw = new FileWriter(fileName, true);
             BufferedWriter bw = new BufferedWriter(fw);
@@ -39,7 +48,7 @@ public class TimeMonitor {
             String description = String.valueOf(announcement) + ',' + String.valueOf(delivery);
             out.println(description);
         } catch (IOException e) {
-            System.err.println("Error writing order description to file " + fileName + ".\n");
+            System.err.println("Error writing information to file " + fileName + ".\n");
         }
     }
 
