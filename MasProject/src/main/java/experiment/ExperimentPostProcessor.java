@@ -9,6 +9,7 @@ import energy.EnergyModel;
 import pdp.DroneHW;
 import pdp.DroneLW;
 import util.Tuple;
+import util.Utilities;
 
 import java.io.File;
 import java.io.IOException;
@@ -36,7 +37,6 @@ public final class ExperimentPostProcessor implements PostProcessor<String> {
 
         EnergyModel em = sim.getModelProvider().getModel(EnergyModel.class);
         PDPModel pdp = sim.getModelProvider().getModel(PDPModel.class);
-        System.out.println(pdp.getParcels(PDPModel.ParcelState.DELIVERED));
         // Construct a result string based on the simulator state, of course, in
         // actual code the result should not be a string but a value object
         // containing the values of interest.
@@ -92,9 +92,6 @@ public final class ExperimentPostProcessor implements PostProcessor<String> {
         for (Tuple<Long, Long> timeInfo: ordersInfo)
             differences.add(timeInfo.second - timeInfo.first);
         long averageDelivery = differences.stream().mapToLong(Long::intValue).sum() / differences.size();
-        int seconds = (int) (averageDelivery / 1000) % 60 ;
-        int minutes = (int) ((averageDelivery / (1000*60)) % 60);
-        int hours   = (int) ((averageDelivery / (1000*60*60)) % 24);
-        return String.format("%02d:%02d:%02d",hours,minutes,seconds);
+        return Utilities.convertTimeToString(averageDelivery);
     }
 }

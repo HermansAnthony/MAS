@@ -21,16 +21,14 @@ import renderer.ChargingPointPanel;
 import renderer.DroneRenderer;
 import renderer.MapRenderer;
 import util.Range;
+import util.Utilities;
 
 import javax.annotation.Nullable;
 import javax.imageio.ImageIO;
 import javax.measure.unit.SI;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
-import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Scanner;
 
 
 public class DroneExample {
@@ -72,8 +70,7 @@ public class DroneExample {
      */
     public static void main(@Nullable String[] args) {
         loadResolutionImage(map);
-        loadStoreLocations("/stores.csv");
-
+        storeLocations = Utilities.loadStoreLocations("/stores.csv");
         run(false, endTime);
     }
 
@@ -195,23 +192,4 @@ public class DroneExample {
         }
     }
 
-    /**
-     * Reads the store locations from the specified csv file.
-     * @param filename the csv file.
-     */
-    private static void loadStoreLocations(String filename) {
-        storeLocations = new ArrayList<>();
-        try {
-            InputStream in = DroneExample.class.getResourceAsStream(filename);
-            Scanner scanner = new Scanner(in);
-            scanner.useDelimiter("[,\n]");
-            while (scanner.hasNext()) {
-                storeLocations.add(new Point(new Double(scanner.next()), new Double(scanner.next())));
-            }
-            scanner.close();
-            in.close();
-        } catch (IOException e) {
-            System.err.println("Could not read store locations from csv file.");
-        }
-    }
 }

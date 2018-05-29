@@ -27,11 +27,12 @@ import renderer.DroneRenderer;
 import renderer.MapRenderer;
 import util.Range;
 import util.Tuple;
+import util.Utilities;
 
 import javax.measure.unit.SI;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 
 public class DroneExperiment {
@@ -51,9 +52,6 @@ public class DroneExperiment {
 
     private static final int batteryDroneLW = 2400;  // Expressed in seconds
     private static final int batteryDroneHW = 1500;  // Expressed in seconds
-
-    private static final int amountDroneLW = 20;
-    private static final int amountDroneHW = 10;
 
     //    private static final int droneRadius = 1;
     private static final int amountChargersLW = 5;
@@ -79,9 +77,12 @@ public class DroneExperiment {
      * Main method
      */
     public static void main(String[] args) {
-        loadStoreLocations("/stores.csv");
+        storeLocations = Utilities.loadStoreLocations("/stores.csv");
         ordersInformation = new HashMap<>();
-        Scenario scenario = createScenario();
+        Scenario defaultScenario = createScenario(10, 20);
+        Scenario scenarioLW = createScenario(30,0);
+        Scenario scenarioHW = createScenario(0,30);
+
         ExperimentResults results = Experiment.builder()
             .addConfiguration(MASConfiguration.builder()
                 .addEventHandler(AddDepotEvent.class, AddDepotEvent.namedHandler())
@@ -95,7 +96,7 @@ public class DroneExperiment {
                 // scenario as they are not part of the problem.
                 .addModel(StatsTracker.builder())
                 .addModel(TimeModel.builder().withTickLength(TICK_LENGTH)).build())
-            .addScenario(scenario)
+            .addScenario(defaultScenario)
             .repeat(1)
             .withRandomSeed(0)
             .withThreads(1)
@@ -122,7 +123,7 @@ public class DroneExperiment {
      * algorithm(s) that are used to solve the problem.
      * @return A newly constructed scenario.
      */
-    static Scenario createScenario() {
+    static Scenario createScenario(int amountDroneLW, int amountDroneHW) {
         Scenario.Builder scenarioBuilder = Scenario.builder();
         // Creation of all objects for the scenario
         RandomGenerator rng = new MersenneTwister();
@@ -174,7 +175,6 @@ public class DroneExperiment {
         return scenarioBuilder.build();
     }
 
-    // TODO avoid code duplication
     private static View.Builder createGui(boolean testing) {
         View.Builder view = View.builder()
             .with(PlaneRoadModelRenderer.builder())
@@ -206,25 +206,4 @@ public class DroneExperiment {
         return view;
     }
 
-
-    /**
-     * TODO duplicated from DroneExample
-     * Reads the store locations from the specified csv file.
-     * @param filename the csv file.
-     */
-    private static void loadStoreLocations(String filename) {
-        storeLocations = new ArrayList<>();
-        try {
-            InputStream in = DroneExperiment.class.getResourceAsStream(filename);
-            Scanner scanner = new Scanner(in);
-            scanner.useDelimiter("[,\n]");
-            while (scanner.hasNext()) {
-                storeLocations.add(new Point(new Double(scanner.next()), new Double(scanner.next())));
-            }
-            scanner.close();
-            in.close();
-        } catch (IOException e) {
-            System.err.println("Could not read store locations from csv file.");
-        }
-    }
 }
