@@ -13,6 +13,7 @@ import com.github.rinde.rinsim.core.model.road.RoadUser;
 import com.github.rinde.rinsim.core.model.time.TickListener;
 import com.github.rinde.rinsim.core.model.time.TimeLapse;
 import com.google.common.base.Optional;
+import util.TimeMonitor;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -28,6 +29,7 @@ public class Order extends Parcel implements AntReceiver, TickListener {
     private RoadUser customer;
 
     // Indicates if order has been delivered
+    private TimeMonitor timeMonitor;
     private boolean delivered;
 
     public Order(ParcelDTO parcelDto, Customer customer) {
@@ -37,6 +39,7 @@ public class Order extends Parcel implements AntReceiver, TickListener {
         timeoutTimer = TIMEOUT_RESERVE;
         this.customer = customer;
         this.delivered = false;
+        this.timeMonitor = TimeMonitor.getInstance();
     }
 
 
@@ -78,20 +81,10 @@ public class Order extends Parcel implements AntReceiver, TickListener {
         Collection<Parcel> parcels = getPDPModel().getParcels(PDPModel.ParcelState.DELIVERED);
         if (!delivered) {
             if (parcels.stream().anyMatch(o -> o.getDto().equals(this.getDto()))) {
-                // TODO write a monitor that writes this to a file
                 delivered = true;
                 long announcementTime = this.getDto().getOrderAnnounceTime();
                 long deliveryTime = timeLapse.getTime();
-                int seconds = (int) (announcementTime / 1000) % 60;
-                int minutes = (int) ((announcementTime / (1000 * 60)) % 60);
-                int hours = (int) ((announcementTime / (1000 * 60 * 60)) % 24);
-                String announcement = String.format("%02d:%02d:%02d", hours, minutes, seconds);
-                seconds = (int) (deliveryTime / 1000) % 60;
-                minutes = (int) ((deliveryTime / (1000 * 60)) % 60);
-                hours = (int) ((deliveryTime / (1000 * 60 * 60)) % 24);
-                String delivery = String.format("%02d:%02d:%02d", hours, minutes, seconds);
-//                System.out.println("Order is announced at " + announcement);
-//                System.out.println("Order is delivered at " + delivery);
+                timeMonitor.writeToFile(announcementTime, deliveryTime);
             }
         }
     }

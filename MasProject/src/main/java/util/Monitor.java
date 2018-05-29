@@ -1,12 +1,10 @@
 package util;
 
 import java.io.*;
-import java.text.SimpleDateFormat;
 
 public class Monitor {
     private String fileName;
     private static String outputDirectory = "logging";
-    private static SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm:ss");
 
     public Monitor(String fileName){
 
@@ -33,7 +31,6 @@ public class Monitor {
         } catch (IOException e) {
             System.err.println("Error writing to file " + fileName + ".\n");
         }
-
     }
 
     private String convertTimeToString(long startTime){

@@ -11,6 +11,7 @@ import com.github.rinde.rinsim.geom.Point;
 import com.github.rinde.rinsim.ui.View;
 import com.github.rinde.rinsim.ui.renderers.PlaneRoadModelRenderer;
 import com.github.rinde.rinsim.ui.renderers.RoadUserRenderer;
+import com.github.rinde.rinsim.util.TimeWindow;
 import energy.ChargingPoint;
 import energy.DefaultEnergyModel;
 import org.apache.commons.math3.random.RandomGenerator;
@@ -133,8 +134,10 @@ public class DroneExample {
                     int randomStore = rng.nextInt(storeLocations.size());
                     ParcelDTO orderData = Parcel.builder(storeLocations.get(randomStore),location)
                         .serviceDuration(serviceDuration)
+                        .orderAnnounceTime(time.getStartTime())
                         .neededCapacity(1000 + rng.nextInt(maxCapacity - 1000)) // Capacity is measured in grams
                         .deliveryDuration(5)
+                        .pickupTimeWindow(TimeWindow.create(time.getEndTime(), time.getEndTime()+10000)) // TODO specify a pickup timewindow and a delivery timewindow
                         .pickupDuration(5)
                         .buildDTO();
                     simulator.register(new Order(orderData, customer));

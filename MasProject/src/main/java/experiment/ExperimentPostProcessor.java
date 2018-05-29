@@ -8,7 +8,13 @@ import com.github.rinde.rinsim.experiment.PostProcessor;
 import energy.EnergyModel;
 import pdp.DroneHW;
 import pdp.DroneLW;
+import util.Tuple;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Scanner;
 import java.util.Set;
 
 /**
@@ -46,8 +52,13 @@ public final class ExperimentPostProcessor implements PostProcessor<String> {
             sb.append(dronesHW.size()).append(" heavyweight drones were added.\n");
         }
 
+        // The average occupation at the charging station
         sb.append("The average occupation of the charging station of the simulation was ");
         sb.append(em.getChargingPoint().getAverageOccupation().toString()).append(".\n");
+
+        // The average order delivery time
+        sb.append("The average delivery time of the simulation was ");
+        sb.append(getAverageDeliveryTime()).append(".\n");
 
         if (sim.getCurrentTime() >= args.getScenario().getTimeWindow().end()) {
             sb.append("Simulation has completed.");
@@ -63,5 +74,27 @@ public final class ExperimentPostProcessor implements PostProcessor<String> {
         // Signal that when an exception occurs the entire experiment should be
         // aborted.
         return FailureStrategy.ABORT_EXPERIMENT_RUN;
+    }
+
+    private String getAverageDeliveryTime(){
+        List<Tuple<Long, Long>> ordersInfo = new ArrayList<>();
+        try {
+            Scanner scanner = new Scanner(new File("logging/timeInfo.csv"));
+            scanner.useDelimiter("[,\n]");
+            while (scanner.hasNext()) {
+                ordersInfo.add(new Tuple<>(new Long(scanner.next()), new Long(scanner.next())));
+            }
+            scanner.close();
+        } catch (IOException e) {
+            System.err.println("Could not read from order description csv file.");
+        }
+        List<Long> differences = new ArrayList<>();
+        for (Tuple<Long, Long> timeInfo: ordersInfo)
+            differences.add(timeInfo.second - timeInfo.first);
+        long averageDelivery = differences.stream().mapToLong(Long::intValue).sum() / differences.size();
+        int seconds = (int) (averageDelivery / 1000) % 60 ;
+        int minutes = (int) ((averageDelivery / (1000*60)) % 60);
+        int hours   = (int) ((averageDelivery / (1000*60*60)) % 24);
+        return String.format("%02d:%02d:%02d",hours,minutes,seconds);
     }
 }
