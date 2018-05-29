@@ -1,28 +1,25 @@
 package ant;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class ExplorationAnt extends Ant {
-    public AntDestination destination;
     private List<List<AntUser>> paths;
     private List<AntUser> travelledPath;
     private Map<Class<?>, Double> chargingPointOccupations;
+    private Optional<Double> droneCapacity;
     private int hopCount;
 
-    public ExplorationAnt(AntUser source, AntDestination destination) {
-        this(source, destination, 1);
+    public ExplorationAnt(AntUser source) {
+        this(source, 1);
     }
 
-    public ExplorationAnt(AntUser source, AntDestination destination, int hopCount) {
+    public ExplorationAnt(AntUser source, int hopCount) {
         super(source);
         this.paths = new ArrayList<>();
         this.travelledPath = new ArrayList<>();
-        this.destination = destination;
-        this.hopCount = hopCount;
         this.chargingPointOccupations = null;
+        this.droneCapacity = Optional.empty();
+        this.hopCount = hopCount;
     }
 
     public void setChargingPointOccupations(Map<Class<?>, Double> chargingPointOccupation) {
@@ -84,7 +81,11 @@ public class ExplorationAnt extends Ant {
         primaryAgent.receiveExplorationAnt(this);
     }
 
-    public enum AntDestination {
-        Order, ChargingPoint
+    public Optional<Double> getDroneCapacity() {
+        return droneCapacity;
+    }
+
+    public void setDroneCapacity(Double droneCapacity) {
+        this.droneCapacity = Optional.of(droneCapacity);
     }
 }

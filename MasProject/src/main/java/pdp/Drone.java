@@ -450,13 +450,15 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
     private void spawnExplorationAnts(boolean sendToChargingPoint) {
         for (Parcel parcel : getPDPModel().getParcels(PDPModel.ParcelState.AVAILABLE)) {
             Order order = (Order) parcel;
-            ExplorationAnt explorationAnt = new ExplorationAnt(this, ExplorationAnt.AntDestination.Order);
+            ExplorationAnt explorationAnt = new ExplorationAnt(this);
+            // Add the drone's capacity in order to improve searching for specific orders
+            explorationAnt.setDroneCapacity(this.getCapacity());
             explorationAnts.put(explorationAnt, false);
             order.receiveExplorationAnt(explorationAnt);
         }
 
         if (sendToChargingPoint) {
-            ExplorationAnt explorationAnt = new ExplorationAnt(this, ExplorationAnt.AntDestination.ChargingPoint);
+            ExplorationAnt explorationAnt = new ExplorationAnt(this);
             explorationAnts.put(explorationAnt, false);
             getEnergyModel().getChargingPoint().receiveExplorationAnt(explorationAnt);
         }

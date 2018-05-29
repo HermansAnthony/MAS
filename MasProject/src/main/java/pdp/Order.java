@@ -3,7 +3,6 @@ package pdp;
 import ant.Ant;
 import ant.AntUser;
 import ant.ExplorationAnt;
-import ant.ExplorationAnt.AntDestination;
 import ant.IntentionAnt;
 import com.github.rinde.rinsim.core.model.pdp.PDPModel;
 import com.github.rinde.rinsim.core.model.pdp.Parcel;
@@ -27,7 +26,6 @@ public class Order extends Parcel implements AntUser, TickListener, EnergyUser {
     private static final int RADIUS_HOP = 1000;
 
     private Queue<Ant> temporaryAnts;
-    // TODO split up Map for returning exploration ants
     private Map<ExplorationAnt, List<ExplorationAnt>> followupAnts;
     private Map<ExplorationAnt, Boolean> followupAntsPresence;
 
@@ -131,7 +129,7 @@ public class Order extends Parcel implements AntUser, TickListener, EnergyUser {
             // Send out more exploration ants if necessary
             if (hopCount == MAXIMUM_HOPCOUNT) {
                 // Send an exploration ant to the charging point to finish the explored path
-                ExplorationAnt newAnt = new ExplorationAnt(this, AntDestination.ChargingPoint, hopCount+1);
+                ExplorationAnt newAnt = new ExplorationAnt(this, hopCount+1);
                 energyModel.getChargingPoint().receiveExplorationAnt(newAnt);
 
                 followupAnts.put(ant, new ArrayList<>(Arrays.asList(newAnt)));
@@ -144,19 +142,20 @@ public class Order extends Parcel implements AntUser, TickListener, EnergyUser {
 
                 for (Order order : ordersWithinDistance) {
                     // Make sure no loops or orders which are already reserved are considered
-                    // TODO can also keep maximum capacity in exploration ants in order to filter out more orders here
-                    if (travelledPath.contains(order) || order.isReserved()) {
+                    if (travelledPath.contains(order)
+                        || order.isReserved()
+                        || (ant.getDroneCapacity().isPresent() && ant.getDroneCapacity().get() <= order.getNeededCapacity())) {
                         continue;
                     }
 
-                    ExplorationAnt newAnt = new ExplorationAnt(this, AntDestination.Order, hopCount+1);
+                    ExplorationAnt newAnt = new ExplorationAnt(this, hopCount+1);
                     newAnt.setTravelledPath(travelledPath);
                     newAnts.add(newAnt);
                     order.receiveExplorationAnt(newAnt);
                 }
 
                 // Charging point exploration ant
-                ExplorationAnt newAnt = new ExplorationAnt(this, AntDestination.ChargingPoint, hopCount+1);
+                ExplorationAnt newAnt = new ExplorationAnt(this, hopCount+1);
                 newAnts.add(newAnt);
                 energyModel.getChargingPoint().receiveExplorationAnt(newAnt);
 
