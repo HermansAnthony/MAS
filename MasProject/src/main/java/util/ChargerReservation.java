@@ -1,17 +1,19 @@
 package util;
 
-public class ChargerReservation<DroneType> {
-    private DroneType owner;
+import pdp.Drone;
+
+public class ChargerReservation {
+    private Drone owner;
     private long timeBegin;
     private long timeEnd;
 
-    public ChargerReservation(DroneType owner, long timeBegin, long timeEnd) {
+    public ChargerReservation(Drone owner, long timeBegin, long timeEnd) {
         this.owner = owner;
         this.timeBegin = timeBegin;
         this.timeEnd = timeEnd;
     }
 
-    public DroneType getOwner() {
+    public Drone getOwner() {
         return owner;
     }
 

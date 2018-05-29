@@ -263,6 +263,8 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
                 intendedPath.removeAntUserFromPath(firstNode);
                 if (intendedPath.getPath().isEmpty()) {
                     state = delegateMasState.initialState;
+                    payload = Optional.absent();
+                    chargingStatus = ChargingStatus.Idle;
                     return;
                 }
                 intendedPath.setMerit(
@@ -500,6 +502,26 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
         }
     }
 
+    private void moveToChargingPoint(RoadModel rm, EnergyModel em, TimeLapse timeLapse) {
+        final ChargingPoint chargingPoint = em.getChargingPoint();
+
+        if (!rm.getPosition(this).equals(chargingPoint.getLocation())) {
+            rm.moveTo(this, chargingPoint.getLocation(), timeLapse);
+        } else if (chargingPoint.dronePresent(this, true)) {
+            // Only charge if there is a charger free
+            try {
+                chargingPoint.chargeDrone(this, timeLapse);
+                chargingStatus = ChargingStatus.Charging;
+            } catch (UnpermittedChargeException e) {
+                // TODO keep retrying or just go back to drawing board? (opted for drawing board for now)
+                advanceInPath(timeLapse);
+            }
+        } else {
+            // The drone was not reserved in the charging station, advance in the path
+            advanceInPath(timeLapse);
+        }
+    }
+
     private void advanceInPath(TimeLapse timeLapse) {
         // Remove the last finished node from the reserved path (and its intention ant)
         removeFirstNodeOfPath();
@@ -521,21 +543,6 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
                 payload = Optional.of((Order) nextNode);
                 chargingStatus = ChargingStatus.Idle;
             }
-        }
-    }
-
-    private void moveToChargingPoint(RoadModel rm, EnergyModel em, TimeLapse timeLapse) {
-        final ChargingPoint chargingPoint = em.getChargingPoint();
-
-        if (!rm.getPosition(this).equals(chargingPoint.getLocation())) {
-            rm.moveTo(this, chargingPoint.getLocation(), timeLapse);
-        } else if (chargingPoint.dronePresent(this, true)) {
-            // Only charge if there is a charger free
-            chargingPoint.chargeDrone(this);
-            chargingStatus = ChargingStatus.Charging;
-        } else {
-            // The drone was not reserved in the charging station, advance in the path
-            advanceInPath(timeLapse);
         }
     }
 
@@ -581,7 +588,6 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
         return 5;
     }
 
-    // TODO find better way of dealing with removal of customers than using threads.
     private class RemoveCustomer implements Runnable {
         RoadModel rm;
         PDPModel pdp;

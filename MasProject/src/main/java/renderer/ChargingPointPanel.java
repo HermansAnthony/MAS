@@ -5,6 +5,7 @@ import com.github.rinde.rinsim.core.model.Model.AbstractModelVoid;
 import com.github.rinde.rinsim.core.model.ModelBuilder;
 import com.github.rinde.rinsim.ui.renderers.PanelRenderer;
 import com.google.common.base.Optional;
+import energy.Charger;
 import energy.ChargingPoint;
 import energy.EnergyModel;
 import org.eclipse.swt.SWT;
@@ -13,10 +14,8 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
-import pdp.Drone;
 import pdp.DroneHW;
 import pdp.DroneLW;
-import util.Tuple;
 
 import java.util.List;
 
@@ -92,12 +91,12 @@ public final class ChargingPointPanel extends AbstractModelVoid
         statsTable.get().getItem(1).setText(2, String.valueOf(chargingPoint.getOccupationPercentage(DroneHW.class, true)*100)+'%');
     }
 
-    private void setStats(List<Tuple<Drone, Boolean>> chargers, int index){
-        for (Tuple<Drone, Boolean> entry : chargers){
+    private void setStats(List<Charger> chargers, int index){
+        for (Charger entry : chargers){
             String droneID = "-";
             String chargeID = String.valueOf(index);
-            if (entry != null){
-                if (entry.second) droneID = entry.first.getDroneString();
+            if (entry.isDronePresent()){
+                droneID = entry.getCurrentDrone().getDroneString();
             }
             chargeStatsTable.get().getItem(index).setText(0, chargeID);
             chargeStatsTable.get().getItem(index).setText(1, droneID);
@@ -105,8 +104,8 @@ public final class ChargingPointPanel extends AbstractModelVoid
         }
     }
     private void setChargerStats(ChargingPoint chargingPoint){
-        List<Tuple<Drone, Boolean>> chargersLW =  chargingPoint.getChargeStations(DroneLW.class);
-        List<Tuple<Drone, Boolean>> chargersHW =  chargingPoint.getChargeStations(DroneHW.class);
+        List<Charger> chargersLW =  chargingPoint.getChargeStations(DroneLW.class);
+        List<Charger> chargersHW =  chargingPoint.getChargeStations(DroneHW.class);
         setStats(chargersLW, 0);
         setStats(chargersHW, chargersLW.size());
     }
