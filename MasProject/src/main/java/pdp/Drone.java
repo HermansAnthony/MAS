@@ -42,7 +42,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
     // Delegate MAS stuff
     private delegateMasState state;
     private Map<ExplorationAnt, Boolean> explorationAnts;
-    private Map<IntentionAnt, Boolean> intentionAnt;
+    private Map<IntentionAnt, Boolean> intentionAnts;
     // TODO could maybe move all the intention ants inside the reservation path
     private ReservationPath intendedPath;
 
@@ -63,7 +63,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
 
         state = delegateMasState.initialState;
         explorationAnts = new HashMap<>();
-        intentionAnt = new HashMap<>();
+        intentionAnts = new HashMap<>();
         intendedPath = null;
 
         monitor = new DroneMonitor(this.getDroneString());
@@ -98,17 +98,30 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
         return SPEED_RANGE.getSpeed(1 - (capacity / getCapacity()));
     }
 
+    public Range getSpeedRange() {
+        return SPEED_RANGE;
+    }
+
+    /**
+     * Gets the maximum distance a drone could travel if flying at max speed.
+     * @return The calculated distance.
+     */
+    private double getTravelCapacity() {
+        return SPEED_RANGE.getSpeed(1) * battery.getMaxCapacity();
+    }
+
+
     private void delegateMAS(TimeLapse timeLapse) {
         switch (state){
             case initialState: {
                 explorationAnts.clear();
-                intentionAnt.clear();
+                intentionAnts.clear();
                 payload = Optional.absent();
                 intendedPath = new ReservationPath();
                 chargingStatus = ChargingStatus.Idle;
 
                 // Initially, spawn exploration ants to get information about all possible orders.
-                spawnExplorationAnts(true);
+                spawnExplorationAnts(timeLapse.getStartTime(), true);
 
                 // Only leave this state if exploration ants have been spawned.
                 if (!explorationAnts.isEmpty()) {
@@ -131,16 +144,16 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
                     description += "Intention ants are sent to '" + intention +"'.\n";
                     monitor.writeToFile(timeLapse.getStartTime(), description);
 
-                    spawnIntentionAnts(intention.getPath());
+                    spawnIntentionAnts(intention);
 
                     // Clear all the exploration ants since they are outdated at this point
                     explorationAnts.clear();
-                    state = delegateMasState.intentionAntReturned;
+                    state = delegateMasState.intentionAntsReturned;
                 }
                 break;
             }
-            case intentionAntReturned: {
-                if (intentionAnt.values().contains(false)) {
+            case intentionAntsReturned: {
+                if (intentionAnts.values().contains(false)) {
                     // Not all intention ants have returned yet
                     return;
                 }
@@ -149,9 +162,19 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
                 for (int i = 0; i < path.size(); i++) {
                     // Search for the related ant
                     AntUser antUser = path.get(i);
-                    IntentionAnt ant = intentionAnt.keySet().stream()
+                    IntentionAnt ant = intentionAnts.keySet().stream()
                         .filter(o -> o.getSecondaryAgent() == antUser)
                         .findFirst().get();
+
+                    if (ant instanceof ChargeIntentionAnt) {
+                        Tuple<Long, Long> timeWindow = new Tuple<>(((ChargeIntentionAnt) ant).getBeginTime(),
+                            ((ChargeIntentionAnt) ant).getEndTime());
+                        if (!intendedPath.getChargerReservation().getTimeWindow().equals(timeWindow)) {
+                            // The acquired reservation is not the same one as the intended one, adjust it
+                            intendedPath.getChargerReservation().setTimeWindow(timeWindow);
+                            recalculateMeritCurrentPath(timeLapse);
+                        }
+                    }
 
                     if (i == 0) {
                         if (!ant.reservationApproved) {
@@ -176,21 +199,22 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
                         }
                     }
                 }
+
                 state = delegateMasState.continueReservation;
             }
             case continueReservation: {
-                if (intentionAnt.values().contains(false)) {
+                if (intentionAnts.values().contains(false)) {
                     // Not all the intention ants have returned yet, move to the next state
-                    state = delegateMasState.spawnExplorationAnts;
+                    state = delegateMasState.reconsideration;
                     break;
                 }
 
-                if (intentionAnt.keySet().stream().anyMatch(o -> !o.reservationApproved)) {
+                if (intentionAnts.keySet().stream().anyMatch(o -> !o.reservationApproved)) {
                     // One of the reservations has now been unapproved -> remove this from the path
 
                     // Find the first occurrence where the reservation was not approved
                     for (AntUser antUser : intendedPath.getPath()) {
-                        if (intentionAnt.keySet().stream()
+                        if (intentionAnts.keySet().stream()
                             .anyMatch(o -> o.getSecondaryAgent() == antUser && !o.reservationApproved)) {
                             removeNodesFromPath(antUser, timeLapse);
                             break;
@@ -198,16 +222,17 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
                     }
                 } else {
                     // Resend the intention ants if no problem with the reservations occurred
-                    for (IntentionAnt ant : intentionAnt.keySet()) {
+                    for (IntentionAnt ant : intentionAnts.keySet()) {
                         ant.reservationApproved = false; // reset reservation approval
                         ant.getSecondaryAgent().receiveIntentionAnt(ant); // send the ant
-                        intentionAnt.put(ant, false); // mark the ant as gone
+                        intentionAnts.put(ant, false); // mark the ant as gone
                     }
                 }
-                state = delegateMasState.spawnExplorationAnts;
+
+                state = delegateMasState.reconsideration;
                 break;
             }
-            case spawnExplorationAnts: {
+            case reconsideration: {
                 if (!payload.isPresent() && chargingStatus == ChargingStatus.Idle) {
                     // The order has been delivered or the drone is fully charged, go back to the initial state
                     state = delegateMasState.initialState;
@@ -216,18 +241,18 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
 
                 if (explorationAnts.isEmpty()) {
                     // Spawn new exploration ants for possible reconsiderations
-                    spawnExplorationAnts(false);
+                    spawnExplorationAnts(timeLapse.getStartTime(), false);
                 } else if (!explorationAnts.containsValue(false)) {
                     // Check for reconsiderations
                     ReservationPath intention = getBestIntentionPath(timeLapse);
                     double meritDifference = intention.getMerit() - intendedPath.getMerit();
                     if (meritDifference > RECONSIDERATION_MERIT) {
-                        if (reconsiderAction(intention, timeLapse)) {
+                        if (reconsiderAction(intention)) {
                             String description = " Reconsideration happened: new best merit = " + intention.getMerit() + ".\n";
                             description += "Intention ants are sent to '" + intention +"'.\n";
                             monitor.writeToFile(timeLapse.getStartTime(), description);
 
-                            state = delegateMasState.intentionAntReturned;
+                            state = delegateMasState.intentionAntsReturned;
                             break;
                         }
                     }
@@ -238,6 +263,10 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
                 break;
             }
         }
+    }
+
+    private void recalculateMeritCurrentPath(TimeLapse timeLapse) {
+        intendedPath.setMerit(determineBenefitsPath(intendedPath, false, timeLapse.getStartTime()));
     }
 
     /**
@@ -255,10 +284,10 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
                 // as well as calculating the new merit of the remaining path
                 for (int j = path.size() - 1; j >= i; j--) {
                     AntUser followingAntUser = path.get(j);
-                    IntentionAnt antToRemove = intentionAnt.keySet().stream()
+                    IntentionAnt antToRemove = intentionAnts.keySet().stream()
                         .filter(o -> o.getSecondaryAgent() == followingAntUser)
                         .findFirst().get();
-                    intentionAnt.remove(antToRemove);
+                    intentionAnts.remove(antToRemove);
                 }
 
                 intendedPath.removeAntUserFromPath(firstNode);
@@ -268,8 +297,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
                     chargingStatus = ChargingStatus.Idle;
                     return;
                 }
-                intendedPath.setMerit(
-                    determineBenefitsPath(intendedPath.getPath(), intendedPath.getOccupationPercentage(), false, timeLapse));
+                recalculateMeritCurrentPath(timeLapse);
                 break;
             }
         }
@@ -281,7 +309,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
      */
     private void removeFirstNodeOfPath() {
         List<AntUser> path = intendedPath.getPath();
-        if (path.size() < 1) {
+        if (path.isEmpty()) {
             System.err.println("The path is empty, could not remove first node.");
             return;
         }
@@ -292,26 +320,42 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
 
         // Find the related intention ant and remove it from the list of intention ants.
         List<IntentionAnt> antsToRemove = new ArrayList<>();
-        intentionAnt.keySet().stream()
+        intentionAnts.keySet().stream()
             .filter(o -> o.getSecondaryAgent() == antUser)
-            .forEach(o -> antsToRemove.add(o));
-        antsToRemove.forEach(o -> intentionAnt.remove(o));
+            .forEach(antsToRemove::add);
+        antsToRemove.forEach(o -> intentionAnts.remove(o));
     }
 
     private ReservationPath getBestIntentionPath(TimeLapse timeLapse) {
         ReservationPath bestPath = new ReservationPath();
 
         for (ExplorationAnt ant : explorationAnts.keySet()) {
-            for (List<AntUser> path : ant.getPaths()) {
-                double chargingPointOccupation = ant.getChargingPointOccupations().get(this.getClass());
-                double merit = determineBenefitsPath(path, chargingPointOccupation, true, timeLapse);
+            for (ExplorationPath path : ant.getPaths()) {
+                double merit = determineBenefitsPath(path, true, timeLapse.getStartTime());
 
                 if (merit > bestPath.getMerit()) {
-                    bestPath = new ReservationPath(path, merit, chargingPointOccupation);
+                    bestPath = new ReservationPath(path.getPath(), merit, path.getBestReservation());
                 }
             }
         }
         return bestPath;
+    }
+
+
+    private double determineBenefitsPath(ExplorationPath path, boolean checkReservation, long currentTime) {
+        return determineBenefitsPath(path.getPath(),
+            path.getBestReservation(),
+            path.getResultingTime(),
+            checkReservation,
+            currentTime);
+    }
+
+    private double determineBenefitsPath(ReservationPath path, boolean checkReservation, long currentTime) {
+        return determineBenefitsPath(path.getPath(),
+            path.getChargerReservation(),
+            path.getChargerReservation().getTimeWindow().first,
+            checkReservation,
+            currentTime);
     }
 
     /**
@@ -321,13 +365,18 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
      *  - order urgency
      *  - travel distance
      *  - charging point occupation
-     * @param path The path to be evaluated.
-     * @param occupationPercentage the occupation of the chargers for this specific drone type.
+     * @param path
+     * @param chargerReservation
+     * @param resultingTime
      * @param checkReservation Checks if the order is not reserved yet for merit calculations.
-     * @param timeLapse The time at which this is calculated.
+     * @param currentTime The time at which this is calculated.
      * @return The merit associated with the specific path.
      */
-    private double determineBenefitsPath(List<AntUser> path, double occupationPercentage, boolean checkReservation, TimeLapse timeLapse) {
+    private double determineBenefitsPath(List<AntUser> path,
+                                         ChargerReservation chargerReservation,
+                                         long resultingTime,
+                                         boolean checkReservation,
+                                         long currentTime) {
         double merit = 0;
         RoadModel rm = getRoadModel();
         EnergyModel em = getEnergyModel();
@@ -335,19 +384,17 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
 
         Point startLocation = rm.getPosition(this);
         double startBatteryLevel = this.battery.getBatteryLevel();
-        long startTime = timeLapse.getTime();
-
+        long startTime = currentTime;
 
         for (AntUser destination : path) {
             if (destination instanceof ChargingPoint) {
-                merit += determineChargeBenefits(occupationPercentage, startBatteryLevel == this.battery.getMaxCapacity());
+                merit += determineChargeBenefits(chargerReservation, resultingTime, startBatteryLevel);
                 continue;
             }
 
             Order order = (Order) destination;
             double neededCapacity = order.getNeededCapacity();
 
-            // TODO move this check higher up to not even consider paths which satisfy these conditions (performance improvement)
             if (neededCapacity > this.getDTO().getCapacity()) {
                 return Double.NEGATIVE_INFINITY;
             }
@@ -400,12 +447,25 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
         return merit / path.size();
     }
 
-    private double determineChargeBenefits(double chargingPointOccupation, boolean batteryFull) {
-        return batteryFull || chargingPointOccupation == 1 ?
-            Double.NEGATIVE_INFINITY : 100 * (1 - chargingPointOccupation);
+    private double determineChargeBenefits(ChargerReservation chargerReservation, long arrivalAtChargingStation, double batteryLevel) {
+        // Do not go to the charging station if more than 90% of the battery still remains
+        if (batteryLevel / battery.getMaxCapacity() > 0.9) {
+            return Double.NEGATIVE_INFINITY;
+        }
+
+        // TODO good heuristic? -> give 10 minutes leeway, otherwise consider the charge benefits to be worthless (maybe tweak amount of minutes)
+        if (chargerReservation.getTimeWindow().first < arrivalAtChargingStation) {
+            return 100;
+        } else {
+            double ratio = ((double) chargerReservation.getTimeWindow().first - arrivalAtChargingStation) / 10*60*1000;
+            if (ratio > 1) {
+                return Double.NEGATIVE_INFINITY;
+            }
+            return 100 * (1 - ratio);
+        }
     }
 
-    private boolean reconsiderAction(ReservationPath intention, TimeLapse timeLapse) {
+    private boolean reconsiderAction(ReservationPath intention) {
         PDPModel pm = getPDPModel();
 
         if (chargingStatus == ChargingStatus.Charging) {
@@ -414,53 +474,46 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
             return false;
         }
 
-        intentionAnt.clear();
+        intentionAnts.clear();
         payload = Optional.absent();
         chargingStatus = ChargingStatus.Idle;
-        intendedPath = new ReservationPath(intention.getPath(), intention.getMerit(), intention.getOccupationPercentage());
-        spawnIntentionAnts(intention.getPath());
+        intendedPath = new ReservationPath(intention.getPath(), intention.getMerit(), intention.getChargerReservation());
+        spawnIntentionAnts(intention);
         explorationAnts.clear();
 
         return true;
     }
 
-    private void spawnIntentionAnts(List<AntUser> destinations) {
-        // Spawn an intention ant for every node on the path
-        for (AntUser destination : destinations) {
-            IntentionAnt ant;
-            if (destination instanceof Order) {
-                ant = new IntentionAnt(this, destination);
-            } else {
-                // TODO adjust time frame with calculated values from exploration ants
-                ant = new ChargeIntentionAnt(this, destination, 0, Long.MAX_VALUE);
-            }
-            intentionAnt.put(ant, false);
-            destination.receiveIntentionAnt(ant);
-        }
-    }
-
-    /**
-     * Gets the maximum distance a drone could travel if flying at max speed.
-     * @return The calculated distance.
-     */
-    private double getTravelCapacity() {
-        return SPEED_RANGE.getSpeed(1) * battery.getMaxCapacity();
-    }
-
-    private void spawnExplorationAnts(boolean sendToChargingPoint) {
+    private void spawnExplorationAnts(long startTime, boolean sendToChargingPoint) {
         for (Parcel parcel : getPDPModel().getParcels(PDPModel.ParcelState.AVAILABLE)) {
             Order order = (Order) parcel;
-            ExplorationAnt explorationAnt = new ExplorationAnt(this);
-            // Add the drone's capacity in order to improve searching for specific orders
-            explorationAnt.setDroneCapacity(this.getCapacity());
+            ExplorationAnt explorationAnt = new ExplorationAnt(this, battery.getBatteryLevel(), startTime);
+            // Add the drone purely for information retrieval about the drone (not for performing actions)
+            explorationAnt.setDrone(this);
             explorationAnts.put(explorationAnt, false);
             order.receiveExplorationAnt(explorationAnt);
         }
 
         if (sendToChargingPoint) {
-            ExplorationAnt explorationAnt = new ExplorationAnt(this);
+            ExplorationAnt explorationAnt = new ExplorationAnt(this, battery.getBatteryLevel(), startTime);
             explorationAnts.put(explorationAnt, false);
+            explorationAnt.setDrone(this);
             getEnergyModel().getChargingPoint().receiveExplorationAnt(explorationAnt);
+        }
+    }
+
+    private void spawnIntentionAnts(ReservationPath path) {
+        // Spawn an intention ant for every node on the path
+        for (AntUser destination : path.getPath()) {
+            IntentionAnt ant;
+            if (destination instanceof Order) {
+                ant = new IntentionAnt(this, destination);
+            } else {
+                ChargerReservation reservation = path.getChargerReservation();
+                ant = new ChargeIntentionAnt(this, destination, reservation.getTimeWindow().first, reservation.getTimeWindow().second);
+            }
+            intentionAnts.put(ant, false);
+            destination.receiveIntentionAnt(ant);
         }
     }
 
@@ -500,9 +553,8 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
             new Thread(new RemoveCustomer(rm, pdp, order.getCustomer())).start();
             pdp.deliver(this, order, timeLapse);
 
-
             // Advance to next node in path
-            advanceInPath(timeLapse);
+            advanceInPath(timeLapse.getStartTime());
         }
     }
 
@@ -517,16 +569,15 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
                 chargingPoint.chargeDrone(this, timeLapse);
                 chargingStatus = ChargingStatus.Charging;
             } catch (UnpermittedChargeException e) {
-                // TODO keep retrying or just go back to drawing board? (opted for drawing board for now)
-                advanceInPath(timeLapse);
+                advanceInPath(timeLapse.getStartTime());
             }
         } else {
             // The drone was not reserved in the charging station, advance in the path
-            advanceInPath(timeLapse);
+            advanceInPath(timeLapse.getStartTime());
         }
     }
 
-    private void advanceInPath(TimeLapse timeLapse) {
+    private void advanceInPath(long currentTime) {
         // Remove the last finished node from the reserved path (and its intention ant)
         removeFirstNodeOfPath();
 
@@ -537,7 +588,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
             chargingStatus = ChargingStatus.Idle;
             state = delegateMasState.initialState;
         } else {
-            intendedPath.setMerit(determineBenefitsPath(path, intendedPath.getOccupationPercentage(), true, timeLapse));
+            intendedPath.setMerit(determineBenefitsPath(intendedPath, true, currentTime));
             // 'Move' to the next node in the path
             AntUser nextNode = path.get(0);
             if (nextNode instanceof ChargingPoint) {
@@ -550,8 +601,8 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
         }
     }
 
-    public void stopCharging(TimeLapse timeLapse) {
-        advanceInPath(timeLapse);
+    public void stopCharging(long currentTime) {
+        advanceInPath(currentTime);
     }
 
     public void receiveExplorationAnt(ExplorationAnt ant) {
@@ -566,7 +617,7 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
         // Note: It may happen that some ants which have been sent out are not needed anymore by the drone.
         //       In that case, the ant is dropped.
         try {
-            intentionAnt.replace(ant, true);
+            intentionAnts.replace(ant, true);
         } catch (Exception e) {}
     }
 
@@ -654,8 +705,8 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
     // TODO: explanation
     private enum delegateMasState {
         initialState,
-        spawnExplorationAnts,
-        intentionAntReturned,
+        reconsideration,
+        intentionAntsReturned,
         explorationAntsReturned,
         continueReservation
     }

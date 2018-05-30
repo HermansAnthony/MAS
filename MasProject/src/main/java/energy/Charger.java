@@ -6,19 +6,22 @@ import pdp.Drone;
 import util.ChargerReservation;
 import util.UnpermittedChargeException;
 
+import javax.annotation.Nonnull;
+import java.util.Iterator;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-public class Charger implements TickListener {
+public class Charger implements EnergyUser, TickListener {
     private Drone currentDrone;
     private TreeSet<ChargerReservation> reservations;
     private long currentTime;
 
-    Charger() {
+    public Charger() {
         currentDrone = null;
 
         reservations = new TreeSet<>((ChargerReservation res1, ChargerReservation res2) -> {
             // Intentionally left out equal values since these should not occur (due to collision check).
+            if (res1.equals(res2)) return 0;
             return res1.getTimeWindow().first > res2.getTimeWindow().first ? 1 : -1;
         });
 
@@ -36,7 +39,8 @@ public class Charger implements TickListener {
 
     }
 
-    public void releaseDrone() {
+    private void releaseDrone() {
+        currentDrone.stopCharging(currentTime);
         currentDrone = null;
     }
 
@@ -52,6 +56,14 @@ public class Charger implements TickListener {
         reservations.removeAll(reservations.stream()
             .filter(o -> o.getOwner() == drone)
             .collect(Collectors.toList()));
+
+        if (currentDrone == drone) {
+            releaseDrone();
+        }
+    }
+
+    public boolean hasReservation(Drone drone) {
+        return reservations.stream().anyMatch(o -> o.getOwner() == drone);
     }
 
     public boolean hasReservation(Drone drone, long startTime) {
@@ -60,14 +72,29 @@ public class Charger implements TickListener {
             && o.getTimeWindow().second >= startTime);
     }
 
+    public boolean hasReservation(Drone drone, long startTime, long endTime) {
+        return reservations.stream().anyMatch(o -> o.getOwner() == drone
+            && o.getTimeWindow().first == startTime
+            && o.getTimeWindow().second == endTime);
+    }
+
     @Override
-    public void tick(TimeLapse timeLapse) {
-        if (reservations.first().getTimeWindow().second <= timeLapse.getStartTime()) {
-            // Remove the reservation since it passed its time window.
-            reservations.remove(reservations.first());
-        }
+    public void tick(@Nonnull TimeLapse timeLapse) {
         currentTime = timeLapse.getStartTime();
-        // TODO also release ants from this point?
+
+        if (currentDrone != null) {
+            this.chargeDrone((double) timeLapse.getTickLength() / 1000);
+        }
+
+        if (!reservations.isEmpty()) {
+            if (currentTime > reservations.first().getTimeWindow().second) {
+                if (currentDrone != null) {
+                    releaseDrone();
+                }
+                // Remove the reservation since it passed its time window.
+                reservations.pollFirst();
+            }
+        }
     }
 
     @Override
@@ -91,5 +118,55 @@ public class Charger implements TickListener {
 
     public Drone getCurrentDrone() {
         return currentDrone;
+    }
+
+    public ChargerReservation getBestReservation(Drone drone, long beginTime, long endTime) {
+        // Loop over all the reservations and find the best one possible in the given time frame
+        long reservationDuration = endTime - beginTime;
+
+        if (reservations.isEmpty()) {
+            return new ChargerReservation(drone, beginTime, endTime);
+        } else if (reservations.first().getTimeWindow().first >= endTime) {
+            return new ChargerReservation(drone, beginTime, endTime);
+        }
+
+        ChargerReservation previousReservation = null;
+        // Try to fit the reservation in between current reservations
+        Iterator<ChargerReservation> it = reservations.iterator();
+        while (it.hasNext()) {
+            ChargerReservation reservation = it.next();
+
+            // Base case
+            if (previousReservation != null) {
+                long durationBetween = previousReservation.getTimeWindow().second -
+                    reservation.getTimeWindow().first;
+                // Check if the time between the 2 reservations is greater than the time needed
+                // if so, get a reservation in between.
+                if (durationBetween > reservationDuration) {
+                    long newBeginTime = previousReservation.getTimeWindow().second;
+                    return new ChargerReservation(drone, newBeginTime, newBeginTime + reservationDuration);
+                }
+            }
+            previousReservation = reservation;
+        }
+
+        // At this point, the previous reservation is the last reservation
+        long newBeginTime = previousReservation.getTimeWindow().second;
+        return new ChargerReservation(drone, newBeginTime, newBeginTime + reservationDuration);
+    }
+
+    private void chargeDrone(double amount) {
+        currentDrone.battery.recharge(amount);
+
+        if (currentDrone.battery.fullyCharged()) {
+            releaseDrone();
+            // Remove the reservation since it passed its time window.
+            reservations.pollFirst();
+        }
+    }
+
+    @Override
+    public void initEnergyUser(EnergyModel energyModel) {
+
     }
 }

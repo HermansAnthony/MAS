@@ -21,4 +21,12 @@ public class ChargeIntentionAnt extends IntentionAnt {
     public long getEndTime() {
         return endTime;
     }
+
+    public void setBeginTime(long beginTime) {
+        this.beginTime = beginTime;
+    }
+
+    public void setEndTime(long endTime) {
+        this.endTime = endTime;
+    }
 }

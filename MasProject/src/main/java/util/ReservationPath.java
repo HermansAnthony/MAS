@@ -9,16 +9,16 @@ import java.util.stream.Collectors;
 public class ReservationPath {
     private List<AntUser> path;
     private double merit;
-    private double occupationPercentage;
+    private ChargerReservation chargerReservation;
 
     public ReservationPath() {
-        this(new ArrayList<>(), Double.NEGATIVE_INFINITY, 0.0);
+        this(new ArrayList<>(), Double.NEGATIVE_INFINITY, null);
     }
 
-    public ReservationPath(List<AntUser> path, double merit, double occupationPercentage) {
+    public ReservationPath(List<AntUser> path, double merit, ChargerReservation chargerReservation) {
         this.path = path;
         this.merit = merit;
-        this.occupationPercentage = occupationPercentage;
+        this.chargerReservation = chargerReservation;
     }
 
     public List<AntUser> getPath() {
@@ -33,8 +33,8 @@ public class ReservationPath {
         return merit;
     }
 
-    public double getOccupationPercentage() {
-        return occupationPercentage;
+    public ChargerReservation getChargerReservation() {
+        return chargerReservation;
     }
 
     /**

@@ -36,7 +36,6 @@ public class DefaultEnergyModel extends EnergyModel {
             Drone drone = (Drone) event.roadUser;
 
             double tickLength = event.pathProgress.time().doubleValue(SI.MILLI(SI.SECOND));
-            // TODO decrease maybe more dynamically.
             drone.battery.decreaseBatteryLevel(tickLength / 1000);
         }, PlaneRoadModel.RoadEventType.MOVE);
     }

@@ -13,10 +13,13 @@ import com.github.rinde.rinsim.core.model.road.RoadModels;
 import com.github.rinde.rinsim.core.model.road.RoadUser;
 import com.github.rinde.rinsim.core.model.time.TickListener;
 import com.github.rinde.rinsim.core.model.time.TimeLapse;
+import com.github.rinde.rinsim.geom.Point;
 import com.google.common.base.Optional;
 import energy.EnergyModel;
 import energy.EnergyUser;
+import util.BatteryCalculations;
 
+import javax.measure.unit.SI;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -95,12 +98,6 @@ public class Order extends Parcel implements AntUser, TickListener, EnergyUser {
                     .flatMap(List::stream)
                     .collect(Collectors.toList()));
 
-                // TODO add way to get most recent occupation percentage of charging point (i.e. biggest hop count of path)
-                for (ExplorationAnt ant : entry.getValue()) {
-                    if (ant.getChargingPointOccupations() != null) {
-                        originalAnt.setChargingPointOccupations(ant.getChargingPointOccupations());
-                    }
-                }
                 antsToReturn.add(originalAnt);
             }
         }
@@ -120,16 +117,30 @@ public class Order extends Parcel implements AntUser, TickListener, EnergyUser {
             // Set the boolean flag to true for this particular ant (marking it as returned)
             followupAntsPresence.replace(ant, true);
         } else {
+            // TODO rewrite this part more clearly
             // The order is the destination for the ant
             ant.setSecondaryAgent(this);
             List<AntUser> travelledPath = ant.addHopTravelledPath(this);
 
             int hopCount = ant.getHopCount();
 
+            RoadModel rm = getRoadModel();
+            Point primaryLocation = rm.getPosition(ant.getPrimaryAgent());
+            double distancePickup = rm.getDistanceOfPath(rm.getShortestPathTo(primaryLocation, getPickupLocation())).doubleValue(SI.METER);
+            double distanceDeliver = rm.getDistanceOfPath(rm.getShortestPathTo(getPickupLocation(), getDeliveryLocation())).doubleValue(SI.METER);
+            double batteryDecrease = BatteryCalculations.calculateNecessaryBatteryLevel(ant.getDroneSpeedRange(),
+                ant.getDroneCapacity(), getNeededCapacity(), distancePickup, distanceDeliver);
+
+            // The battery decrease can also be used for the time calculation, since it is based on time
+            double remainingBatteryLevel = ant.getRemainingBattery() - batteryDecrease;
+            long resultingTime = ant.getResultingTime() + (int) Math.ceil(batteryDecrease*1000) + getDeliveryDuration() + getPickupDuration();
+
             // Send out more exploration ants if necessary
             if (hopCount == MAXIMUM_HOPCOUNT) {
                 // Send an exploration ant to the charging point to finish the explored path
-                ExplorationAnt newAnt = new ExplorationAnt(this, hopCount+1);
+                ExplorationAnt newAnt =
+                    new ExplorationAnt(this, remainingBatteryLevel, resultingTime, hopCount+1);
+                newAnt.setDrone(ant.getDrone());
                 energyModel.getChargingPoint().receiveExplorationAnt(newAnt);
 
                 followupAnts.put(ant, new ArrayList<>(Arrays.asList(newAnt)));
@@ -144,19 +155,23 @@ public class Order extends Parcel implements AntUser, TickListener, EnergyUser {
                     // Make sure no loops or orders which are already reserved are considered
                     if (travelledPath.contains(order)
                         || order.isReserved()
-                        || (ant.getDroneCapacity().isPresent() && ant.getDroneCapacity().get() <= order.getNeededCapacity())) {
+                        || ant.getDroneCapacity() <= order.getNeededCapacity()) {
                         continue;
                     }
 
-                    ExplorationAnt newAnt = new ExplorationAnt(this, hopCount+1);
+                    ExplorationAnt newAnt =
+                        new ExplorationAnt(this, remainingBatteryLevel, resultingTime, hopCount+1);
                     newAnt.setTravelledPath(travelledPath);
+                    newAnt.setDrone(ant.getDrone());
                     newAnts.add(newAnt);
                     order.receiveExplorationAnt(newAnt);
                 }
 
                 // Charging point exploration ant
-                ExplorationAnt newAnt = new ExplorationAnt(this, hopCount+1);
+                ExplorationAnt newAnt =
+                    new ExplorationAnt(this, remainingBatteryLevel, resultingTime, hopCount+1);
                 newAnts.add(newAnt);
+                newAnt.setDrone(ant.getDrone());
                 energyModel.getChargingPoint().receiveExplorationAnt(newAnt);
 
                 followupAnts.put(ant, newAnts);
@@ -215,12 +230,14 @@ public class Order extends Parcel implements AntUser, TickListener, EnergyUser {
 
     @Override
     public String getDescription() {
-        RoadModel rm = getRoadModel();
-        String result = "";
-        result += "Order - location: ";
-        result += rm.containsObject(this) ? rm.getPosition(this).toString() : "in transit";
-        result += ", payload: " + this.getNeededCapacity() + " grams";
-        return result;
+        return String.format("<Order (%f grams)>", getNeededCapacity());
+
+//        RoadModel rm = getRoadModel();
+//        String result = "";
+//        result += "Order - location: ";
+//        result += rm.containsObject(this) ? rm.getPosition(this).toString() : "in transit";
+//        result += ", payload: " + this.getNeededCapacity() + " grams";
+//        return result;
     }
 
     // TODO remove, here for debugging

@@ -11,6 +11,7 @@ import com.github.rinde.rinsim.geom.Point;
 import com.github.rinde.rinsim.ui.View;
 import com.github.rinde.rinsim.ui.renderers.PlaneRoadModelRenderer;
 import com.github.rinde.rinsim.ui.renderers.RoadUserRenderer;
+import energy.Charger;
 import energy.ChargingPoint;
 import energy.DefaultEnergyModel;
 import org.apache.commons.math3.random.RandomGenerator;
@@ -112,8 +113,20 @@ public class DroneExample {
         final RandomGenerator rng = simulator.getRandomGenerator();
         final PlaneRoadModel planeRoadModel = simulator.getModelProvider().getModel(PlaneRoadModel.class);
 
+        List<Charger> LWChargers = new ArrayList<>();
+        List<Charger> HWChargers = new ArrayList<>();
 
-        simulator.register(new ChargingPoint(chargingPointLocation, amountChargersLW, amountChargersHW));
+        for (int i = 0; i < amountChargersLW; i++) {
+            LWChargers.add(new Charger());
+            simulator.register(LWChargers.get(i));
+        }
+
+        for (int i = 0; i < amountChargersHW; i++) {
+            HWChargers.add(new Charger());
+            simulator.register(HWChargers.get(i));
+        }
+
+        simulator.register(new ChargingPoint(chargingPointLocation, LWChargers, HWChargers));
 
         for (Point storeLocation : storeLocations) {
             simulator.register(new Store(storeLocation));

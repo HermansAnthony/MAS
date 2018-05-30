@@ -9,6 +9,10 @@ public class Tuple<K,V> {
         second = v;
     }
 
+    public boolean equals(Tuple<K, V> other) {
+        return other.first == this.first && other.second == this.second;
+    }
+
     public String toString() {
         return "<" + first.toString() + "," + second.toString() + ">";
     }

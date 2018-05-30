@@ -4,7 +4,11 @@ import com.github.rinde.rinsim.core.SimulatorAPI;
 import com.github.rinde.rinsim.geom.Point;
 import com.github.rinde.rinsim.scenario.TimedEvent;
 import com.github.rinde.rinsim.scenario.TimedEventHandler;
+import energy.Charger;
 import energy.ChargingPoint;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Event indicating that a charging point can be created.
@@ -64,7 +68,20 @@ public class AddChargingPointEvent implements TimedEvent {
         INSTANCE {
             @Override
             public void handleTimedEvent(AddChargingPointEvent event, SimulatorAPI sim) {
-                sim.register(new ChargingPoint(event.getPosition(), event.getAmtChargersLW(), event.getAmtChargersHW()));
+                List<Charger> LWChargers = new ArrayList<>();
+                List<Charger> HWChargers = new ArrayList<>();
+
+                for (int i = 0; i < event.amountDroneLW; i++) {
+                    LWChargers.add(new Charger());
+                    sim.register(LWChargers.get(i));
+                }
+
+                for (int i = 0; i < event.amountDroneHW; i++) {
+                    HWChargers.add(new Charger());
+                    sim.register(HWChargers.get(i));
+                }
+
+                sim.register(new ChargingPoint(event.getPosition(), LWChargers, HWChargers));
             }
 
             @Override

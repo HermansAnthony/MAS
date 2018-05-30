@@ -33,4 +33,15 @@ public class BatteryCalculations {
 
         return necessaryBatteryLevel;
     }
+
+    public static double calculateNecessaryBatteryLevel(Range speedRange,
+                                                        double maxCapacity,
+                                                        double capacity,
+                                                        double distancePickup,
+                                                        double distanceDeliver) {
+        double necessaryBatteryLevel = 0;
+        necessaryBatteryLevel += distancePickup / speedRange.getSpeed(1);
+        necessaryBatteryLevel += distanceDeliver / speedRange.getSpeed(1 - (capacity / maxCapacity));
+        return necessaryBatteryLevel;
+    }
 }

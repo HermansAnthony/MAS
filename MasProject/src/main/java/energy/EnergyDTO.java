@@ -3,8 +3,8 @@ package energy;
 import static java.lang.Math.min;
 
 public class EnergyDTO {
-    final double MAX_CAPACITY;
-    double batteryLevel;
+    private final double MAX_CAPACITY;
+    private double batteryLevel;
 
     public EnergyDTO(double batteryLevel) {
         this.batteryLevel = batteryLevel;
