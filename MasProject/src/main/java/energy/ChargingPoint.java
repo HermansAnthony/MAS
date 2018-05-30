@@ -86,16 +86,18 @@ public class ChargingPoint implements AntUser, RoadUser, EnergyUser, TickListene
         timeoutReservations.remove(drone);
     }
 
-    public void chargeDrone(Drone drone, TimeLapse timeLapse) throws UnpermittedChargeException {
+    public boolean chargeDrone(Drone drone, TimeLapse timeLapse) throws UnpermittedChargeException {
         if (!dronePresent(drone, true)) {
             System.err.println("Drone not reserved yet, unable to charge.");
         } else {
             for (Charger charger : chargers.get(drone.getClass())) {
                 if (charger.hasReservation(drone, timeLapse.getStartTime())) {
                     charger.setDrone(drone, timeLapse);
+                    return true;
                 }
             }
         }
+        return false;
     }
 
     private boolean chargersOccupied(Class droneClass) {
@@ -112,7 +114,7 @@ public class ChargingPoint implements AntUser, RoadUser, EnergyUser, TickListene
         return ((double) stream.count()) / chargers.get(droneClass).size();
     }
 
-    public List<Charger> getChargeStations(Class Drone){
+    public List<Charger> getChargeStations(Class Drone) {
         return chargers.get(Drone);
     }
 

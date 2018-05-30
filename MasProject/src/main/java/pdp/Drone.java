@@ -566,8 +566,10 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
         } else if (chargingPoint.dronePresent(this, true)) {
             // Only charge if there is a charger free
             try {
-                chargingPoint.chargeDrone(this, timeLapse);
-                chargingStatus = ChargingStatus.Charging;
+                // The drone only charges if the function returns true, otherwise the drone tries to charge too early
+                if (chargingPoint.chargeDrone(this, timeLapse)) {
+                    chargingStatus = ChargingStatus.Charging;
+                }
             } catch (UnpermittedChargeException e) {
                 advanceInPath(timeLapse.getStartTime());
             }
