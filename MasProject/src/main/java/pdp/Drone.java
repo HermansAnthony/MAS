@@ -27,7 +27,13 @@ import java.util.concurrent.TimeUnit;
 
 public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
     private static int nextID = 0;
-    private static int RECONSIDERATION_MERIT = 10;
+    private static final int WEIGHT_BATTERY = 100;
+    private static final int WEIGHT_CHARGE = 100;
+    private static final int WEIGHT_PAYLOAD = 100;
+    private static final int WEIGHT_ORDER_URGENCY = 200;
+    private static final int WEIGHT_TRAVEL_DISTANCE = 100;
+    private static final int CHARGER_RESERVATION_LEEWAY = 10; // amount of minutes a charger reservation remains useful
+    private static final int RECONSIDERATION_MERIT = 10;
 
 
     int ID;
@@ -365,9 +371,9 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
      *  - order urgency
      *  - travel distance
      *  - charging point occupation
-     * @param path
-     * @param chargerReservation
-     * @param resultingTime
+     * @param path The path to be considered.
+     * @param chargerReservation The charger reservation associated with the path.
+     * @param resultingTime The resulting time after reaching the charging point.
      * @param checkReservation Checks if the order is not reserved yet for merit calculations.
      * @param currentTime The time at which this is calculated.
      * @return The merit associated with the specific path.
@@ -382,13 +388,12 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
         EnergyModel em = getEnergyModel();
 
 
-        Point startLocation = rm.getPosition(this);
-        double startBatteryLevel = this.battery.getBatteryLevel();
-        long startTime = currentTime;
+        Point currentLocation = rm.getPosition(this);
+        double currentBatteryLevel = this.battery.getBatteryLevel();
 
         for (AntUser destination : path) {
             if (destination instanceof ChargingPoint) {
-                merit += determineChargeBenefits(chargerReservation, resultingTime, startBatteryLevel);
+                merit += determineChargeBenefits(chargerReservation, resultingTime, currentBatteryLevel);
                 continue;
             }
 
@@ -407,42 +412,47 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
             // Determine the total battery capacity that will be used for this specific order if it is chosen.
             // If the usage exceeds the current battery capacity, return -1 to make sure this order is not chosen.
             // Otherwise, choose orders in favour of using as little of the remaining battery capacity as possible.
-            double distancePickup = rm.getDistanceOfPath(rm.getShortestPathTo(startLocation, order.getPickupLocation())).doubleValue(SI.METER);
+            double distancePickup = rm.getDistanceOfPath(rm.getShortestPathTo(currentLocation, order.getPickupLocation())).doubleValue(SI.METER);
             double distanceDeliver = rm.getDistanceOfPath(rm.getShortestPathTo(order.getPickupLocation(), order.getDeliveryLocation())).doubleValue(SI.METER);
             double distanceCharge = rm.getDistanceOfPath(rm.getShortestPathTo(order.getDeliveryLocation(), em.getChargingPoint().getLocation())).doubleValue(SI.METER);
             double neededBatteryLevelWithCharge = BatteryCalculations.calculateNecessaryBatteryLevel(
                 this, distancePickup, distanceDeliver, distanceCharge, neededCapacity);
-
-            if (neededBatteryLevelWithCharge > startBatteryLevel) {
-                return Double.NEGATIVE_INFINITY;
-            }
-
             double neededBatteryLevelWithoutCharge =
                 BatteryCalculations.calculateNecessaryBatteryLevel(this, distancePickup, distanceDeliver, neededCapacity);
-            merit += (1 - (neededBatteryLevelWithoutCharge / startBatteryLevel)) * 100;
 
+            if (neededBatteryLevelWithCharge > currentBatteryLevel) {
+                return Double.NEGATIVE_INFINITY;
+            }
+            merit += (1 - (neededBatteryLevelWithoutCharge / currentBatteryLevel)) * WEIGHT_BATTERY;
 
-            // Favour the orders which are closer to their specific deadline.
-            double timeLeft = order.getDeliveryTimeWindow().end() - startTime;
-            double totalTimeOrder = order.getDeliveryTimeWindow().end() - order.getOrderAnnounceTime();
-            double percentageTimeLeft = timeLeft / totalTimeOrder;
-            // Increase the percentage if the order is already over due.
-            double meritPercentageTime = order.getDeliveryTimeWindow().end() <= startTime
-                ? 1.5 : (1 - percentageTimeLeft);
-
-            merit += meritPercentageTime * 200;
-
-            // Favour the orders which use up least of the drone's current travel capacity.
-            double travelDistance = distancePickup + distanceDeliver + distanceCharge;
-            merit += (1 - (travelDistance / getTravelCapacity())) * 100;
-
-
-            startLocation = order.getDeliveryLocation();
-            startBatteryLevel -= neededBatteryLevelWithoutCharge;
-            startTime -= order.getPickupDuration()
+            currentLocation = order.getDeliveryLocation();
+            currentBatteryLevel -= neededBatteryLevelWithoutCharge;
+            currentTime += order.getPickupDuration()
                 + order.getDeliveryDuration()
                 + (distancePickup / getSpeed(0) * 1000)
                 + (distanceDeliver / getSpeed(neededCapacity) * 1000);
+
+
+
+            // Favour the orders which are closer to their specific deadline.
+            double timeLeft = order.getDeliveryTimeWindow().end() - currentTime;
+            double totalTimeOrder = order.getDeliveryTimeWindow().end() - order.getOrderAnnounceTime();
+
+            // Increase the percentage if the order is already over due.
+            double meritPercentageTime = 2;
+            if (timeLeft > 0) {
+                meritPercentageTime = 2 * (1 - (timeLeft / totalTimeOrder));
+            }
+            merit += meritPercentageTime * WEIGHT_ORDER_URGENCY;
+
+
+            // Favour the orders which use up least of the drone's current travel capacity.
+            double travelDistance = distancePickup + distanceDeliver + distanceCharge;
+            merit += (1 - (travelDistance / getTravelCapacity())) * WEIGHT_TRAVEL_DISTANCE;
+
+            // Favour the orders which use up most of the capacity of the drone
+            // TODO only makes things worse :(
+//            merit += (order.getNeededCapacity() / getDTO().getCapacity()) * WEIGHT_PAYLOAD;
         }
         return merit / path.size();
     }
@@ -454,15 +464,12 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
         }
 
         // TODO good heuristic? -> give 10 minutes leeway, otherwise consider the charge benefits to be worthless (maybe tweak amount of minutes)
-        if (chargerReservation.getTimeWindow().first < arrivalAtChargingStation) {
-            return 100;
-        } else {
-            double ratio = ((double) chargerReservation.getTimeWindow().first - arrivalAtChargingStation) / 10*60*1000;
-            if (ratio > 1) {
-                return Double.NEGATIVE_INFINITY;
-            }
-            return 100 * (1 - ratio);
+        double ratio = Math.abs((double) chargerReservation.getTimeWindow().first - arrivalAtChargingStation)
+            / CHARGER_RESERVATION_LEEWAY*60*1000;
+        if (ratio > 1) {
+            return Double.NEGATIVE_INFINITY;
         }
+        return WEIGHT_CHARGE * (1 - ratio);
     }
 
     private boolean reconsiderAction(ReservationPath intention) {
