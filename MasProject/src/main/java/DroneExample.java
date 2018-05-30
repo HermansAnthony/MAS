@@ -14,10 +14,12 @@ import com.github.rinde.rinsim.ui.renderers.RoadUserRenderer;
 import com.github.rinde.rinsim.util.TimeWindow;
 import energy.ChargingPoint;
 import energy.DefaultEnergyModel;
+import energy.EnergyModel;
 import org.apache.commons.math3.random.RandomGenerator;
+import org.eclipse.swt.widgets.Display;
 import org.jetbrains.annotations.NotNull;
 import pdp.*;
-import renderer.ChargingPointPanel;
+import renderer.ChargePanel;
 import renderer.DroneRenderer;
 import renderer.MapRenderer;
 import util.Range;
@@ -60,6 +62,7 @@ public class DroneExample {
 
     private static List<Point> storeLocations;
     private static Point resolutionImage;
+    private static final Display display = new Display();
 
 
     /**
@@ -107,7 +110,8 @@ public class DroneExample {
             .build();
         final RandomGenerator rng = simulator.getRandomGenerator();
         final PlaneRoadModel planeRoadModel = simulator.getModelProvider().getModel(PlaneRoadModel.class);
-
+        final EnergyModel energyModel = simulator.getModelProvider().getModel(EnergyModel.class);
+        final ChargePanel panel = new ChargePanel(display, energyModel);
 
         simulator.register(new ChargingPoint(chargingPointLocation, amountChargersLW, amountChargersHW));
 
@@ -120,7 +124,7 @@ public class DroneExample {
         for (int i = 0; i < amountDroneHW; i++) {
             simulator.register(new DroneHW(speedDroneHW, capacityDroneHW, batteryDroneHW, chargingPointLocation));
         }
-
+        panel.initializePanel();
         simulator.addTickListener(new TickListener() {
             @Override
             public void tick(@NotNull TimeLapse time) {
@@ -145,7 +149,9 @@ public class DroneExample {
             public void afterTick(@NotNull TimeLapse timeLapse) {}
         });
 
+        panel.render();
         simulator.start();
+        if (!display.isDisposed()) display.dispose();
         return simulator;
     }
 
@@ -165,16 +171,17 @@ public class DroneExample {
                     DroneHW.class, "/droneHW-32.png"))
             .with(DroneRenderer.builder())
             .with(MapRenderer.builder(map))
-            .with(ChargingPointPanel.builder())
+            .withDisplay(display)
+//            .with(ChargingPointPanel.builder())
             .withResolution(new Double(resolutionImage.x).intValue(), new Double(resolutionImage.y).intValue())
             .withTitleAppendix("Drone Demo");
-
         if (testing) {
             view = view.withAutoClose()
                 .withAutoPlay()
                 .withSimulatorEndTime(10000)
                 .withSpeedUp(64);
         }
+
         return view;
     }
 
