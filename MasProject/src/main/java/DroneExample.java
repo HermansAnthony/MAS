@@ -110,7 +110,7 @@ public class DroneExample {
                 .withSpeedUnit(SI.METERS_PER_SECOND)
                 .withMaxSpeed(50))
             .addModel(DefaultEnergyModel.builder())
-            .addModel(DefaultPDPModel.builder()) // TODO possibly define our own PDP model, extended from the PDP model class
+            .addModel(DefaultPDPModel.builder())
             .addModel(view)
             .build();
         final RandomGenerator rng = simulator.getRandomGenerator();
@@ -156,7 +156,7 @@ public class DroneExample {
                         .orderAnnounceTime(time.getStartTime())
                         .neededCapacity(1000 + rng.nextInt(maxCapacity - 1000)) // Capacity is measured in grams
                         .deliveryDuration(5)
-                        .pickupTimeWindow(TimeWindow.create(time.getEndTime(), time.getEndTime()+10000)) // TODO specify a pickup timewindow and a delivery timewindow
+                        .pickupTimeWindow(TimeWindow.create(time.getEndTime(), time.getEndTime()+10000))
                         .pickupDuration(5)
                         .buildDTO();
                     simulator.register(new Order(orderData, customer));

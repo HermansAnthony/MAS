@@ -18,11 +18,11 @@ import com.google.common.base.Optional;
 import energy.EnergyModel;
 import energy.EnergyUser;
 import util.BatteryCalculations;
+import util.TimeMonitor;
 
 import javax.measure.unit.SI;
 import java.util.*;
 import java.util.stream.Collectors;
-import util.TimeMonitor;
 
 
 public class Order extends Parcel implements AntUser, TickListener, EnergyUser {
@@ -36,7 +36,7 @@ public class Order extends Parcel implements AntUser, TickListener, EnergyUser {
 
     private Optional<Vehicle> reserver;
     private int timeoutTimer;
-    private static int TIMEOUT_RESERVE = 20; // TODO fine grain this value
+    private static int TIMEOUT_RESERVE = 20;
 
     private RoadUser customer;
     private EnergyModel energyModel;
@@ -265,8 +265,4 @@ public class Order extends Parcel implements AntUser, TickListener, EnergyUser {
 //        return result;
     }
 
-    // TODO remove, here for debugging
-    public String toString() {
-        return "<Order: " + this.getNeededCapacity() + " grams>";
-    }
 }

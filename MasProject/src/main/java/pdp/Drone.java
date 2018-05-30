@@ -49,7 +49,6 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
     private delegateMasState state;
     private Map<ExplorationAnt, Boolean> explorationAnts;
     private Map<IntentionAnt, Boolean> intentionAnts;
-    // TODO could maybe move all the intention ants inside the reservation path
     private ReservationPath intendedPath;
 
 
@@ -711,13 +710,24 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
     public void afterTick(TimeLapse time) {}
 
 
-    // TODO: explanation
+    /**
+     * An enum specifying the possible states for delegate MAS.
+     *  - initialState: The initial state, sends out exploration ants.
+     *  - explorationAntsReturned: Checks if all sent out exploration ants have returned, and if so,
+     *                             sends intention ants to the best path.
+     *  - intentionAntsReturned: Checks if all sent out intention ants have returned, and if so,
+     *                           removes nodes from the path which were not reserved and moves on to the next state.
+     *  - continueReservation: Continues sending out intention ants for the nodes on the path.
+     *                         Afterwards continues to the next state.
+     *  - reconsideration: Sends out exploration ants for the purpose of reconsideration,
+     *                     and does so if beneficial enough. Returns back to the previous state.
+     */
     private enum delegateMasState {
         initialState,
-        reconsideration,
-        intentionAntsReturned,
         explorationAntsReturned,
-        continueReservation
+        intentionAntsReturned,
+        continueReservation,
+        reconsideration
     }
 
     private enum ChargingStatus {

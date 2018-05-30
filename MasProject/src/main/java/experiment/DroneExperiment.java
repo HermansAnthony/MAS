@@ -167,7 +167,8 @@ public class DroneExperiment {
         scenarioBuilder.addEvent(AddChargingPointEvent.create(chargingPointLocation, amountChargersLW, amountChargersHW));
 
         // Addition of models
-        scenarioBuilder.addModel(RoadModelBuilders.plane()
+        scenarioBuilder
+            .addModel(RoadModelBuilders.plane()
                 .withMinPoint(new Point(0,0))
                 .withMaxPoint(new Point(MAX_X,MAX_Y))
                 .withDistanceUnit(SI.METER)
@@ -178,7 +179,8 @@ public class DroneExperiment {
             .addModel(DefaultEnergyModel.builder());
 
         // Time and timeouts of scenario
-        scenarioBuilder.scenarioLength(simulationLength)
+        scenarioBuilder
+            .scenarioLength(simulationLength)
             .addEvent(TimeOutEvent.create(simulationLength))
             .setStopCondition(StatsStopConditions.timeOutEvent());
 
@@ -253,7 +255,9 @@ public class DroneExperiment {
             .with(StatsPanel.builder())
             .with(ChargingPointPanel.builder())
             .withResolution(new Double(resolutionImage.x).intValue(), new Double(resolutionImage.y).intValue())
-            .withTitleAppendix(name);
+            .withTitleAppendix(name)
+            .withAutoPlay()
+            .withAutoClose();
 
         if (testing) {
             view = view.withAutoClose()

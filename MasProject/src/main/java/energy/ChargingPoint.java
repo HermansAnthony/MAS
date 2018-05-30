@@ -23,7 +23,7 @@ import java.util.stream.Stream;
 
 public class ChargingPoint implements AntUser, RoadUser, EnergyUser, TickListener {
     private static final Integer TIMEOUT_RESERVATION = 20;
-    private static final long MAXIMUM_RESERVATION_LENIENCY = 5*60*1000;
+    private static final long MAXIMUM_RESERVATION_LENIENCY = 10*60*1000;
 
     private Optional<RoadModel> roadModel;
     private Point location;
@@ -51,8 +51,6 @@ public class ChargingPoint implements AntUser, RoadUser, EnergyUser, TickListene
     }
 
     private ChargerReservation reserveCharger(Drone drone, long timeBegin, long timeEnd) {
-        assert(!this.chargersOccupied(drone.getClass()));
-
         ChargerReservation bestReservation = null;
         Charger bestCharger = null;
         List<Charger> chargers = this.chargers.get(drone.getClass());
@@ -98,11 +96,6 @@ public class ChargingPoint implements AntUser, RoadUser, EnergyUser, TickListene
             }
         }
         return false;
-    }
-
-    private boolean chargersOccupied(Class droneClass) {
-        // TODO fix/change this -> maybe look at reservations instead?
-        return chargers.get(droneClass).stream().allMatch(Charger::hasReservationCurrently);
     }
 
     public double getOccupationPercentage(Class droneClass, boolean includeReservations) {
