@@ -20,6 +20,8 @@ import energy.EnergyUser;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import util.TimeMonitor;
+
 
 public class Order extends Parcel implements AntUser, TickListener, EnergyUser {
 
@@ -39,6 +41,10 @@ public class Order extends Parcel implements AntUser, TickListener, EnergyUser {
     private EnergyModel energyModel;
     private RoadModel roadModel;
 
+    // Indicates if order has been delivered
+    private TimeMonitor timeMonitor;
+    private boolean delivered;
+
     public Order(ParcelDTO parcelDto, Customer customer) {
         super(parcelDto);
         temporaryAnts = new ArrayDeque<>();
@@ -47,9 +53,10 @@ public class Order extends Parcel implements AntUser, TickListener, EnergyUser {
         reserver = Optional.absent();
         timeoutTimer = TIMEOUT_RESERVE;
         this.customer = customer;
-
         energyModel = null;
         roadModel = null;
+        this.delivered = false;
+        this.timeMonitor = TimeMonitor.getInstance();
     }
 
 
@@ -211,6 +218,24 @@ public class Order extends Parcel implements AntUser, TickListener, EnergyUser {
 
         if (timeoutTimer <= 0) {
             reserver = Optional.absent();
+        }
+
+        // Fetch all the parcels which are delivered and verify if this order is in that list
+        // If so write the announcement time and delivery time to a file
+        // which can be aggregated later on by the experiment postprocessor
+        Collection<Parcel> parcels = getPDPModel().getParcels(PDPModel.ParcelState.DELIVERED);
+        if (!delivered) {
+            if (parcels.stream().anyMatch(o -> o.getDto().equals(this.getDto()))) {
+                delivered = true;
+                long announcementTime = this.getDto().getOrderAnnounceTime();
+                long deliveryTime = timeLapse.getTime();
+                // The order was delivered too late
+                if (deliveryTime > this.getDto().getDeliveryTimeWindow().end()) {
+                    timeMonitor.writeToFile(this.getDto().getDeliveryTimeWindow().end(), deliveryTime, false);
+                    return;
+                }
+                timeMonitor.writeToFile(announcementTime, deliveryTime, true);
+            }
         }
     }
 
