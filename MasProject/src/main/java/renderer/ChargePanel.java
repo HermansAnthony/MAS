@@ -28,7 +28,7 @@ public class ChargePanel {
         this.shell = new Shell(display.getActiveShell());
         this.shell.setText("Charging point statistics");
         final FillLayout layout = new FillLayout();
-        layout.marginWidth = 40;
+        layout.marginWidth = 500;
         layout.marginHeight = 175;
         layout.type = SWT.VERTICAL;
         this.shell.setLayout(layout);
@@ -63,26 +63,33 @@ public class ChargePanel {
 
     public void initializePanel() {
         shell.addListener(SWT.Close, d -> shell.dispose());
-        final Table table = new Table(this.shell, SWT.NONE);
+        final Table table = new Table(this.shell,SWT.MULTI | SWT.FULL_SELECTION
+                | SWT.V_SCROLL | SWT.H_SCROLL);
         statsTable = Optional.of(table);
         table.setHeaderVisible(true);
         table.setLinesVisible(true);
         final String[] statsTitles = new String[] {"Drone", "Current occupation", "Reserved occupation"};
         for (int i = 0; i < statsTitles.length; i++) {
-            final TableColumn column = new TableColumn(table, SWT.NONE);
+            final TableColumn column = new TableColumn(table, SWT.FILL);
             column.setText(statsTitles[i]);
-            table.getColumn(i).pack();
         }
 
         final TableItem firstRow = new TableItem(table, 0);
-        firstRow.setText("LW");
+        firstRow.setText(0,"LW");
+        firstRow.setText(1 ,"0");
+        firstRow.setText(2 ,"0");
         final TableItem secondRow = new TableItem(table, 1);
-        secondRow.setText("HW");
-        statsTable.get().setSize(statsTable.get().computeSize(SWT.DEFAULT,0));
+        secondRow.setText(0,"HW");
+        secondRow.setText(1 ,"0");
+        secondRow.setText(2 ,"0");
+        for (int i = 0; i < statsTitles.length; i++) {
+            table.getColumn(i).pack();
+        }
+        table.setSize(400,150);
 
-        final Table secondTable = new Table(this.shell, SWT.NONE);
+        final Table secondTable = new Table(this.shell, SWT.MULTI | SWT.FULL_SELECTION
+                | SWT.V_SCROLL | SWT.H_SCROLL);
         chargeStatsTable = Optional.of(secondTable);
-
         secondTable.setHeaderVisible(true);
         secondTable.setLinesVisible(true);
         final String[] titles = new String[] {"ChargerID", "Occupation"};
@@ -90,26 +97,29 @@ public class ChargePanel {
             final TableColumn column = new TableColumn(secondTable, SWT.NONE);
             column.setText(titles[i]);
         }
-        for (int i = 0; i < titles.length; i++) {
-            secondTable.getColumn(i).pack();
-        }
-        shell.pack();
         shell.open();
     }
 
     public void render() {
         if (statsTable.get().isDisposed()
-            || statsTable.get().getDisplay().isDisposed()
-            || chargeStatsTable.get().isDisposed()
-            || chargeStatsTable.get().isDisposed()
-            || shell.getDisplay().isDisposed()
-            || shell.isDisposed()) {
+                || statsTable.get().getDisplay().isDisposed()
+                || chargeStatsTable.get().isDisposed()
+                || chargeStatsTable.get().isDisposed()
+                || shell.getDisplay().isDisposed()
+                || shell.isDisposed()) {
             return;
         }
         // Init the rows of the chargers only once
         if (energyModel.getChargingPoint() != null && !chargersInitialized){
-            for (int i = 0; i < 10; i++) {new TableItem(chargeStatsTable.get(), i);}
-            chargeStatsTable.get().setSize(chargeStatsTable.get().computeSize(SWT.DEFAULT,180));
+            for (int i = 0; i < 10; i++) {
+                final TableItem row = new TableItem(chargeStatsTable.get(), i);
+                row.setText(0,"-");
+                row.setText(1,"-");
+            }
+            for (int i = 0; i < 2; i++) {
+                chargeStatsTable.get().getColumn(i).pack();
+            }
+            //chargeStatsTable.get().setSize(chargeStatsTable.get().computeSize(200,180));
             this.chargersInitialized = true;
         }
         Runnable displayTask = () -> displayStats();
