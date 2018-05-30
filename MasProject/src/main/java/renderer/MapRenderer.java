@@ -34,8 +34,8 @@ public class MapRenderer extends CanvasRenderer.AbstractCanvasRenderer {
         imgData.scaledTo(srcWidth.intValue(), srcHeight.intValue());
         Image resolved = new Image(gc.getDevice(), imgData);
         System.out.println("New resolution:" + resolved.getBounds().width + "x" + resolved.getBounds().height);
-        gc.drawImage(resolved, 0, 0);
-//        gc.drawImage(mapImage, 0, 0);
+//        gc.drawImage(resolved, 0, 0);
+        gc.drawImage(mapImage, 0, 0);
     }
 
     @Override

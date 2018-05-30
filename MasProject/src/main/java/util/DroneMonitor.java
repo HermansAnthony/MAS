@@ -1,12 +1,11 @@
 package util;
 
 import java.io.*;
-import java.text.SimpleDateFormat;
 
+// TODO maybe just delete this class and only use the TimeMonitor class?
 public class DroneMonitor {
     private String fileName;
     private static String outputDirectory = "logging";
-    private static SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm:ss");
 
     public DroneMonitor(String fileName){
 
@@ -29,18 +28,10 @@ public class DroneMonitor {
                 BufferedWriter bw = new BufferedWriter(fw);
                 PrintWriter out = new PrintWriter(bw)
             ) {
-            out.println(convertTimeToString(startTime) + text);
+            out.println("["+ Utilities.convertTimeToString(startTime) + "]" + text);
         } catch (IOException e) {
             System.err.println("Error writing to file " + fileName + ".\n");
         }
-
     }
 
-    private String convertTimeToString(long startTime){
-        int seconds = (int) (startTime / 1000) % 60 ;
-        int minutes = (int) ((startTime / (1000*60)) % 60);
-        int hours   = (int) ((startTime / (1000*60*60)) % 24);
-        String formattedTime = String.format("%02d:%02d:%02d",hours,minutes,seconds);
-        return "[" + formattedTime + "]";
-    }
 }
