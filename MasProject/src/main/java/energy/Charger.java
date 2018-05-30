@@ -98,7 +98,7 @@ public class Charger implements EnergyUser, TickListener {
     }
 
     @Override
-    public void afterTick(TimeLapse timeLapse) {
+    public void afterTick(@Nonnull TimeLapse timeLapse) {
 
     }
 
@@ -151,7 +151,7 @@ public class Charger implements EnergyUser, TickListener {
         }
 
         // At this point, the previous reservation is the last reservation
-        long newBeginTime = previousReservation.getTimeWindow().second;
+        long newBeginTime = Math.max(previousReservation.getTimeWindow().second, beginTime);
         return new ChargerReservation(drone, newBeginTime, newBeginTime + reservationDuration);
     }
 
