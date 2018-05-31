@@ -2,10 +2,6 @@
 
 For the multi-agent systems course at KULeuven we chose to implement / make a case study of delivering groceries with drones. We used two types of drones namely a lightweight drone and a heavy weight. A lightweight drone is capable of carrying a maximum load of 3500 grams. A lightweight drone is capable of carrying a maximum load of 9000 grams. They travel with a speed that is dependent on the current load.
 
-## Getting Started
-
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
-
 ### Prerequisites
 
 - [Maven](https://maven.apache.org/)
@@ -16,12 +12,13 @@ For the installation part we refer to the [RinSim Installation Page](http://rins
 
 ## How to use our code
 
-Usage of program: `java -jar <x.jar> <runMode> <experimentScenario> <configurationFile>`
-    `<x.jar>` The jar with dependencies.
-    `<runMode>` Which mode you would like to run (either "Example" or "Experiment".
-    `<experimentScenario>` When running the experiments, the scenario you would like to run ("Default", "LW", "HW").
-    `<configurationFile>` The path to a custom configuration file.
-Default values: <runMode>="Example", <experimentScenario>="Default". 
+Usage of program:
+`java -jar <x.jar> <runMode> <experimentScenario> <configurationFile>`
+`<x.jar>` The jar with dependencies.
+`<runMode>` Which mode you would like to run (either "Example" or "Experiment".
+`<experimentScenario>` When running the experiments, the scenario you would like to run ("Default", "LW", "HW").
+`<configurationFile>` The path to a custom configuration file.
+Default values: <runMode>="Example", <experimentScenario>="Default".
 
 If you would like to run the simulation with a custom configuration file, you should run it as follows `java -cp <path_to_configuration_file>:path_to_jar.jar RunClass <runMode> <experimentScenario> <configurationFile>`. The `<path_to_configuration_file>` should be filled in as the directory where the configuration file is situated.
 
