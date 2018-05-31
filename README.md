@@ -13,6 +13,8 @@ For the installation part we refer to the [RinSim Installation Page](http://rins
 
 ## How to use our code
 
+IMPORTANT: If you are running on OSX please make sure to add the flag `-XstartOnFirstThread`.
+
 Usage of program: `java -jar <x.jar> <runMode> <experimentScenario> <configurationFile>`
 * `<x.jar>` The jar with dependencies.
 * `<runMode>` Which mode you would like to run (either "Example" or "Experiment".
