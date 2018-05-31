@@ -11,7 +11,9 @@ import util.Tuple;
 import util.Utilities;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
@@ -22,8 +24,8 @@ import java.util.Set;
  * @author Anthony Hermans, Federico Quin
  */
 public final class ExperimentPostProcessor implements PostProcessor<String> {
-
-    ExperimentPostProcessor() {}
+    private String fileName;
+    ExperimentPostProcessor(String filename) {this.fileName = filename+".txt";}
 
     @Override
     public String collectResults(Simulator sim, SimArgs args) {
@@ -66,33 +68,22 @@ public final class ExperimentPostProcessor implements PostProcessor<String> {
         // Information relating the order amounts
         sb.append("Amount of delivered orders: ").append(infoOnTime.second).append(".\n");
         sb.append("Amount of overdue orders: ").append(infoOverdue.second).append(".\n");
-        sb.append("Order delivery percentage: ");
+        sb.append("Orders delivered on time: ");
         int totalOrders = infoOnTime.second+infoOverdue.second;
         if (totalOrders == 0) totalOrders = 1;
-        int orderPercentage = (infoOnTime.second/totalOrders) * 100;
-        sb.append(orderPercentage).append("%.\n");
+        Double orderPercentage =  (Double.valueOf(infoOnTime.second)/totalOrders) * 100;
+        sb.append(String.format("%.2f",orderPercentage)).append("%.\n");
 
+        // End of the simulation
         if (sim.getCurrentTime() >= args.getScenario().getTimeWindow().end()) {
             sb.append("Simulation has completed.");
         } else {
             sb.append("Simulation was stopped prematurely.");
         }
-        PlaneRoadModel roadModel = sim.getModelProvider().getModel(PlaneRoadModel.class);
 
-//        for (DroneLW u: dronesLW) {
-//            System.err.println("Unregister LW drone)");
-//            sim.unregister(u);
-//            roadModel.removeObject(u);
-//            roadModel.unregister(u);
-//            pdp.unregister(u);
-//        }
-//        for(DroneHW u: dronesHW){
-//            System.err.println("Unregister HW drone)");
-//            sim.unregister(u);
-//            roadModel.removeObject(u);
-//            roadModel.unregister(u);
-//            pdp.unregister(u);
-//        }
+        // Write the results to a file
+        writeToFile(sb.toString());
+
         return sb.toString();
     }
 
@@ -127,5 +118,24 @@ public final class ExperimentPostProcessor implements PostProcessor<String> {
         if (differences.isEmpty()) return new Tuple<>(Utilities.convertTimeToString(0),0);
         long averageDifference = differences.stream().mapToLong(Long::intValue).sum() / differences.size();
         return new Tuple<>(Utilities.convertTimeToString(averageDifference),ordersInfo.size());
+    }
+
+    /**
+     * Writes the results of the experiment to a file (located in the experiments folder)
+     * @param results the information of the current experiment
+     */
+    void writeToFile(String results){
+        File directory = new File("experiments");
+        if (!directory.exists()){
+            directory.mkdir();
+        }
+        PrintWriter file = null;
+        try {
+            file = new PrintWriter("experiments/"+this.fileName);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+        file.println(results);
+        file.close();
     }
 }

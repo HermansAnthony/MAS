@@ -46,6 +46,10 @@ public class PropertiesLoader {
         return Integer.valueOf(properties.getProperty("mapSize"));
     }
 
+    public int getDeliveryInterval() {
+        return Integer.valueOf(properties.getProperty("deliveryInterval"));
+    }
+
     public Range getSpeedRangeLW() {
         return new Range(Integer.valueOf(properties.getProperty("minSpeedDroneLW")),
             Integer.valueOf(properties.getProperty("maxSpeedDroneLW")));

@@ -10,13 +10,13 @@ public class RunClass {
         String mode = "example";
         String scenarioIdentifier = "default";
 
-        if (args.length > 1) {
+        if (args.length > 0) {
             mode = args[0].toLowerCase();
         }
-        if (args.length > 2) {
+        if (args.length > 1) {
             scenarioIdentifier = args[1].toLowerCase();
         }
-        if (args.length > 3) {
+        if (args.length > 2) {
             PropertiesLoader.propertiesFileLocation = args[2];
         }
 

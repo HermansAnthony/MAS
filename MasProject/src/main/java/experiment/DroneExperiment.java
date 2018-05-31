@@ -21,18 +21,13 @@ import org.apache.commons.math3.random.RandomGenerator;
 import pdp.Customer;
 import pdp.DroneHW;
 import pdp.DroneLW;
-import pdp.Order;
-import renderer.ChargingPointPanel;
 import renderer.DroneRenderer;
 import renderer.MapRenderer;
 import util.PropertiesLoader;
-import util.Tuple;
 import util.Utilities;
 
 import javax.measure.unit.SI;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 
 public class DroneExperiment {
@@ -46,8 +41,6 @@ public class DroneExperiment {
 
     private static final int SEED_ORDERS = 0;
 
-    private static Map<Order, Tuple<Long, Long>> ordersInformation;
-
     private static PropertiesLoader propertiesLoader;
 
     /**
@@ -57,7 +50,6 @@ public class DroneExperiment {
         propertiesLoader = PropertiesLoader.getInstance();
         storeLocations = Utilities.loadStoreLocations(propertiesLoader.getStoresLocation());
         resolutionImage = Utilities.loadResolutionImage(propertiesLoader.getMapLocation());
-        ordersInformation = new HashMap<>();
         Scenario scenario = null;
 
         if (scenarioIdentifier.equals("default"))
@@ -66,6 +58,8 @@ public class DroneExperiment {
             scenario = createScenario(30,0, 10,0);
         if (scenarioIdentifier.equals("hw"))
             scenario = createScenario(0,30, 0, 10);
+
+        String name = "Scenario_" + scenarioIdentifier;
         ExperimentResults results = Experiment.builder()
             .addConfiguration(MASConfiguration.builder()
                 .addEventHandler(AddDepotEvent.class, AddDepotEvent.namedHandler())
@@ -81,11 +75,11 @@ public class DroneExperiment {
                 .addModel(TimeModel.builder().withTickLength(propertiesLoader.getTickLength())).build())
             .addScenario(scenario)
             .repeat(Integer.valueOf(propertiesLoader.getProperty("Experiment.amtRepeat")))
-            .showGui(false)
+            .showGui(createGui(false, name))
+            .showGui(Boolean.valueOf(propertiesLoader.getProperty("Experiment.showGUI")))
             .withRandomSeed(Integer.valueOf(propertiesLoader.getProperty("Experiment.seed")))
             .withThreads(1)
-            .usePostProcessor(new ExperimentPostProcessor())
-            .showGui(createGui(false, "Scenario: " + scenarioIdentifier))
+            .usePostProcessor(new ExperimentPostProcessor(name))
             .perform();
 
         try {
@@ -117,15 +111,20 @@ public class DroneExperiment {
         int maxCapacity = Integer.valueOf(propertiesLoader.getProperty("Experiment.maxCapacityOrder"));
         int capacityDroneLW = propertiesLoader.getCapacityLW();
         int capacityDroneHW = propertiesLoader.getCapacityHW();
+        int deliveryInterval = propertiesLoader.getDeliveryInterval();
 
         for (int i = 0; i < simulationLength; i += tickLength) {
             if (rng.nextDouble() < orderProbability) {
                 Point location = new Point(rng.nextDouble() * mapSize, rng.nextDouble() * mapSize);
                 int randomStore = rng.nextInt(storeLocations.size());
                 int capacity = minCapacity + rng.nextInt(maxCapacity - minCapacity);
-                // if a scenario only contains the
+                int deliveryStartTime = i + 120000;
+                int deliveryEndTime = generateDeliveryEndTime(rng, deliveryStartTime, deliveryInterval);
+
+                // if a scenario only contains the lightweight drones
                 if (capacity > capacityDroneLW && amountDroneHW == 0)
-                    generateDifferentParcels(scenarioBuilder, i, capacity, randomStore, location);
+                    generateDifferentParcels(scenarioBuilder, i, deliveryStartTime,
+                        deliveryEndTime, capacity, randomStore, location);
                 if (amountDroneHW != 0) {
                     ParcelDTO orderData = Parcel.builder(storeLocations.get(randomStore), location)
                         .serviceDuration(serviceDuration)
@@ -133,8 +132,8 @@ public class DroneExperiment {
                         .deliveryDuration(5)
                         .pickupDuration(5)
                         .orderAnnounceTime(i)
-                        .pickupTimeWindow(TimeWindow.create(i, i + 1000000)) // TODO verify/fine tuning
-                        .deliveryTimeWindow(TimeWindow.create(i+1000000, i+1500000))
+                        .pickupTimeWindow(TimeWindow.create(i, i + 150000))
+                        .deliveryTimeWindow(TimeWindow.create(deliveryStartTime, deliveryEndTime))
                         .buildDTO();
                     scenarioBuilder.addEvent(AddOrderEvent.create(orderData));
                 }
@@ -161,6 +160,7 @@ public class DroneExperiment {
         scenarioBuilder.addEvent(AddChargingPointEvent.create(chargingPointLocation, amountChargersLW, amountChargersHW));
 
         // Addition of models
+        DefaultEnergyModel.Builder energyModel = DefaultEnergyModel.builder();
         scenarioBuilder
             .addModel(RoadModelBuilders.plane()
                 .withMinPoint(new Point(0,0))
@@ -170,18 +170,23 @@ public class DroneExperiment {
                 .withMaxSpeed(50))
             // TODO figure out what the different time windows are
             .addModel(DefaultPDPModel.builder().withTimeWindowPolicy(TimeWindowPolicy.TimeWindowPolicies.LIBERAL))
-            .addModel(DefaultEnergyModel.builder());
+            .addModel(energyModel);
 
         // Time and timeouts of scenario
         scenarioBuilder
             .scenarioLength(simulationLength)
             .addEvent(TimeOutEvent.create(simulationLength))
             .setStopCondition(StatsStopConditions.timeOutEvent());
-
         return scenarioBuilder.build();
     }
 
-    private static void generateDifferentParcels(Scenario.Builder scenarioBuilder, int time, int capacity, int randomStore, Point location){
+    private static void generateDifferentParcels(Scenario.Builder scenarioBuilder,
+                                                 int time,
+                                                 int deliveryStartTime,
+                                                 int deliveryEndTime,
+                                                 int capacity,
+                                                 int randomStore,
+                                                 Point location){
         int capacityDroneLW = propertiesLoader.getCapacityLW();
         int orderWeight1 = capacityDroneLW;
         int orderWeight2 = capacity - orderWeight1;
@@ -198,8 +203,8 @@ public class DroneExperiment {
             .deliveryDuration(5)
             .pickupDuration(5)
             .orderAnnounceTime(time)
-            .pickupTimeWindow(TimeWindow.create(time, time + 1000000)) // TODO verify/fine tuning
-            .deliveryTimeWindow(TimeWindow.create(time+1000000, time+1500000))
+            .pickupTimeWindow(TimeWindow.create(time, time + 150000))
+            .deliveryTimeWindow(TimeWindow.create(deliveryStartTime, deliveryEndTime))
             .buildDTO();
         scenarioBuilder.addEvent(AddOrderEvent.create(order1));
 
@@ -210,8 +215,8 @@ public class DroneExperiment {
             .deliveryDuration(5)
             .pickupDuration(5)
             .orderAnnounceTime(time)
-            .pickupTimeWindow(TimeWindow.create(time, time + 1000000)) // TODO verify/fine tuning
-            .deliveryTimeWindow(TimeWindow.create(time+1000000, time+1500000))
+            .pickupTimeWindow(TimeWindow.create(time, time + 150000))
+            .deliveryTimeWindow(TimeWindow.create(deliveryStartTime, deliveryEndTime))
             .buildDTO();
         scenarioBuilder.addEvent(AddOrderEvent.create(order2));
 
@@ -223,8 +228,8 @@ public class DroneExperiment {
                 .deliveryDuration(5)
                 .pickupDuration(5)
                 .orderAnnounceTime(time)
-                .pickupTimeWindow(TimeWindow.create(time, time + 1000000)) // TODO verify/fine tuning
-                .deliveryTimeWindow(TimeWindow.create(time+1000000, time+1500000))
+                .pickupTimeWindow(TimeWindow.create(time, time + 150000))
+                .deliveryTimeWindow(TimeWindow.create(deliveryStartTime, deliveryEndTime))
                 .buildDTO();
             scenarioBuilder.addEvent(AddOrderEvent.create(order3));
         }
@@ -248,7 +253,6 @@ public class DroneExperiment {
             .with(MapRenderer.builder(propertiesLoader.getMapLocation()))
             .with(TimeLinePanel.builder())
             .with(StatsPanel.builder())
-            .with(ChargingPointPanel.builder())
             .withResolution(new Double(resolutionImage.x).intValue(), new Double(resolutionImage.y).intValue())
             .withTitleAppendix(name)
             .withAutoPlay()
@@ -263,4 +267,8 @@ public class DroneExperiment {
         return view;
     }
 
+    private static int generateDeliveryEndTime(RandomGenerator rng, int startTime, int deliveryInterval){
+        int interval = 240000 + rng.nextInt(deliveryInterval);
+        return startTime + interval;
+    }
 }
