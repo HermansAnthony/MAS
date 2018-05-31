@@ -190,7 +190,6 @@ public class DroneExample {
             .with(DroneRenderer.builder())
             .with(MapRenderer.builder(map))
             .withDisplay(display)
-//            .with(ChargingPointPanel.builder())
             .withResolution(new Double(resolutionImage.x).intValue(), new Double(resolutionImage.y).intValue())
             .withTitleAppendix("Drone Demo");
         if (testing) {

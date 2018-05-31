@@ -21,18 +21,13 @@ import org.apache.commons.math3.random.RandomGenerator;
 import pdp.Customer;
 import pdp.DroneHW;
 import pdp.DroneLW;
-import pdp.Order;
-import renderer.ChargingPointPanel;
 import renderer.DroneRenderer;
 import renderer.MapRenderer;
 import util.Range;
-import util.Tuple;
 import util.Utilities;
 
 import javax.measure.unit.SI;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 
 public class DroneExperiment {
@@ -53,7 +48,6 @@ public class DroneExperiment {
     private static final int batteryDroneLW = 2400;  // Expressed in seconds
     private static final int batteryDroneHW = 1500;  // Expressed in seconds
 
-    //    private static final int amountRequests = 100;
     private static final double orderProbability = 0.005;
     private static final int serviceDuration = 60000;
     private static final int maxCapacity = 9000;
@@ -66,16 +60,13 @@ public class DroneExperiment {
     private static final int MAX_X = 5000;
     private static final int MAX_Y = 5000;
     private static final String map = "/leuven2_800x800.png";
-//    private static final String map = "/leuven828.png";
-
-    private static Map<Order, Tuple<Long, Long>> ordersInformation;
+    private static final int deliveryInterval = 120000;
 
     /**
      * Main method
      */
     public static void run(String scenarioIdentifier) {
         storeLocations = Utilities.loadStoreLocations("/stores.csv");
-        ordersInformation = new HashMap<>();
         Scenario scenario = null;
 
         if (scenarioIdentifier.equals("default"))
@@ -84,6 +75,8 @@ public class DroneExperiment {
             scenario = createScenario(30,0, 10,0);
         if (scenarioIdentifier.equals("hw"))
             scenario = createScenario(0,30, 0, 10);
+
+        String name = "Scenario_" + scenarioIdentifier;
         ExperimentResults results = Experiment.builder()
             .addConfiguration(MASConfiguration.builder()
                 .addEventHandler(AddDepotEvent.class, AddDepotEvent.namedHandler())
@@ -99,11 +92,10 @@ public class DroneExperiment {
                 .addModel(TimeModel.builder().withTickLength(TICK_LENGTH)).build())
             .addScenario(scenario)
             .repeat(1)
-            .showGui(false)
             .withRandomSeed(0)
             .withThreads(1)
-            .usePostProcessor(new ExperimentPostProcessor())
-            .showGui(createGui(false, "Scenario: " + scenarioIdentifier))
+            .usePostProcessor(new ExperimentPostProcessor(name))
+            .showGui(createGui(false, name))
             .perform();
 
         try {
@@ -134,7 +126,9 @@ public class DroneExperiment {
                 Point location = new Point(rng.nextDouble() * MAX_X, rng.nextDouble() * MAX_Y);
                 int randomStore = rng.nextInt(storeLocations.size());
                 int capacity = 1000 + rng.nextInt(maxCapacity - 1000);
-                // if a scenario only contains the
+                int deliveryStartTime = i + 120000;
+                int deliveryEndTime = generateDeliveryEndTime(rng, deliveryStartTime);
+                // if a scenario only contains the lightweight drones
                 if (capacity > capacityDroneLW && amountDroneHW == 0)
                     generateDifferentParcels(scenarioBuilder, i, capacity, randomStore, location);
                 if (amountDroneHW != 0) {
@@ -144,8 +138,8 @@ public class DroneExperiment {
                         .deliveryDuration(5)
                         .pickupDuration(5)
                         .orderAnnounceTime(i)
-                        .pickupTimeWindow(TimeWindow.create(i, i + 1000000)) // TODO verify/fine tuning
-                        .deliveryTimeWindow(TimeWindow.create(i+1000000, i+1500000))
+                        .pickupTimeWindow(TimeWindow.create(i, i + 150000))
+                        .deliveryTimeWindow(TimeWindow.create(deliveryStartTime, deliveryEndTime))
                         .buildDTO();
                     scenarioBuilder.addEvent(AddOrderEvent.create(orderData));
                 }
@@ -165,6 +159,7 @@ public class DroneExperiment {
         scenarioBuilder.addEvent(AddChargingPointEvent.create(chargingPointLocation, amountChargersLW, amountChargersHW));
 
         // Addition of models
+        DefaultEnergyModel.Builder energyModel = DefaultEnergyModel.builder();
         scenarioBuilder
             .addModel(RoadModelBuilders.plane()
                 .withMinPoint(new Point(0,0))
@@ -174,14 +169,13 @@ public class DroneExperiment {
                 .withMaxSpeed(50))
             // TODO figure out what the different time windows are
             .addModel(DefaultPDPModel.builder().withTimeWindowPolicy(TimeWindowPolicy.TimeWindowPolicies.LIBERAL))
-            .addModel(DefaultEnergyModel.builder());
+            .addModel(energyModel);
 
         // Time and timeouts of scenario
         scenarioBuilder
             .scenarioLength(simulationLength)
             .addEvent(TimeOutEvent.create(simulationLength))
             .setStopCondition(StatsStopConditions.timeOutEvent());
-
         return scenarioBuilder.build();
     }
 
@@ -251,7 +245,6 @@ public class DroneExperiment {
             .with(MapRenderer.builder(map))
             .with(TimeLinePanel.builder())
             .with(StatsPanel.builder())
-            .with(ChargingPointPanel.builder())
             .withResolution(new Double(resolutionImage.x).intValue(), new Double(resolutionImage.y).intValue())
             .withTitleAppendix(name)
             .withAutoPlay()
@@ -266,4 +259,8 @@ public class DroneExperiment {
         return view;
     }
 
+    private static int generateDeliveryEndTime(RandomGenerator rng, int startTime){
+        int interval = 240000 + rng.nextInt(deliveryInterval);
+        return startTime + interval;
+    }
 }
