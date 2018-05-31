@@ -73,18 +73,16 @@ public class DroneExperiment {
     /**
      * Main method
      */
-    public static void main(String[] args) {
+    public static void run(String scenarioIdentifier) {
         storeLocations = Utilities.loadStoreLocations("/stores.csv");
         ordersInformation = new HashMap<>();
         Scenario scenario = null;
-        String scenarioIdentifier = "Default";
-        if (args.length >= 1)
-            scenarioIdentifier = String.valueOf(args[0]);
-        if (scenarioIdentifier.equals("Default"))
+
+        if (scenarioIdentifier.equals("default"))
             scenario = createScenario(10, 20,5,5);
-        if (scenarioIdentifier.equals("LW"))
+        if (scenarioIdentifier.equals("lw"))
             scenario = createScenario(30,0, 10,0);
-        if (scenarioIdentifier.equals("HW"))
+        if (scenarioIdentifier.equals("hw"))
             scenario = createScenario(0,30, 0, 10);
         ExperimentResults results = Experiment.builder()
             .addConfiguration(MASConfiguration.builder()

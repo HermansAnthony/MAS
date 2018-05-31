@@ -55,7 +55,7 @@
                             <archive>
                                 <manifest>
                                     <mainClass>
-                                        DroneExample
+                                        RunClass
                                     </mainClass>
                                 </manifest>
                             </archive>

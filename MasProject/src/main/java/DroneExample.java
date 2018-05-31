@@ -26,7 +26,6 @@ import renderer.MapRenderer;
 import util.Range;
 import util.Utilities;
 
-import javax.annotation.Nullable;
 import javax.imageio.ImageIO;
 import javax.measure.unit.SI;
 import java.awt.image.BufferedImage;
@@ -76,11 +75,9 @@ public class DroneExample {
      * @param args The first option may optionally indicate the end time of the
      *             simulation.
      */
-    public static void main(@Nullable String[] args) {
-        loadResolutionImage(map);
-        storeLocations = Utilities.loadStoreLocations("/stores.csv");
-        run(false, endTime);
-    }
+//    public static void main(@Nullable String[] args) {
+//        run(false, endTime);
+//    }
 
 
     /**
@@ -100,6 +97,9 @@ public class DroneExample {
      * @return The simulator instance.
      */
     private static Simulator run(boolean testing, final long endTime) {
+        loadResolutionImage(map);
+        storeLocations = Utilities.loadStoreLocations("/stores.csv");
+
         final View.Builder view = createGui(testing);
         final Simulator simulator = Simulator.builder()
             .addModel(TimeModel.builder().withTickLength(250))
