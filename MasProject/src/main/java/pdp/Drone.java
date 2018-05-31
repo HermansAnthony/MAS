@@ -28,12 +28,14 @@ import java.util.concurrent.TimeUnit;
 public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
     private static int nextID = 0;
     private static final int WEIGHT_BATTERY = 100;
-    private static final int WEIGHT_CHARGE = 100;
-    private static final int WEIGHT_PAYLOAD = 100;
-    private static final int WEIGHT_ORDER_URGENCY = 200;
+    private static final int WEIGHT_CHARGE = 200;
+//    private static final int WEIGHT_PAYLOAD = 100;
+    private static final int WEIGHT_ORDER_URGENCY = 300;
     private static final int WEIGHT_TRAVEL_DISTANCE = 100;
+
     private static final int CHARGER_RESERVATION_LEEWAY = 10; // amount of minutes a charger reservation remains useful
-    private static final int RECONSIDERATION_MERIT = 10;
+    private static final int RECONSIDERATION_MERIT =
+        Math.round(0.1f * (WEIGHT_BATTERY + WEIGHT_CHARGE + WEIGHT_ORDER_URGENCY + WEIGHT_TRAVEL_DISTANCE));
 
 
     int ID;
@@ -250,10 +252,12 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
                 } else if (!explorationAnts.containsValue(false)) {
                     // Check for reconsiderations
                     ReservationPath intention = getBestIntentionPath(timeLapse);
+                    double oldMerit = intendedPath.getMerit();
                     double meritDifference = intention.getMerit() - intendedPath.getMerit();
                     if (meritDifference > RECONSIDERATION_MERIT) {
                         if (reconsiderAction(intention)) {
-                            String description = " Reconsideration happened: new best merit = " + intention.getMerit() + ".\n";
+                            String description = " Reconsideration happened: old merit = " + oldMerit +
+                                ", new best merit = " + intention.getMerit() + ".\n";
                             description += "Intention ants are sent to '" + intention +"'.\n";
                             monitor.writeToFile(timeLapse.getStartTime(), description);
 
@@ -450,7 +454,6 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
             merit += (1 - (travelDistance / getTravelCapacity())) * WEIGHT_TRAVEL_DISTANCE;
 
             // Favour the orders which use up most of the capacity of the drone
-            // TODO only makes things worse :(
 //            merit += (order.getNeededCapacity() / getDTO().getCapacity()) * WEIGHT_PAYLOAD;
         }
         return merit / path.size();
@@ -459,14 +462,13 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
     private double determineChargeBenefits(ChargerReservation chargerReservation, long arrivalAtChargingStation, double batteryLevel) {
         // Do not go to the charging station if more than 90% of the battery still remains
         if (batteryLevel / battery.getMaxCapacity() > 0.9) {
-            return Double.NEGATIVE_INFINITY;
+            return 0;
         }
 
-        // TODO good heuristic? -> give 10 minutes leeway, otherwise consider the charge benefits to be worthless (maybe tweak amount of minutes)
         double ratio = Math.abs((double) chargerReservation.getTimeWindow().first - arrivalAtChargingStation)
             / CHARGER_RESERVATION_LEEWAY*60*1000;
         if (ratio > 1) {
-            return Double.NEGATIVE_INFINITY;
+            return 0;
         }
         return WEIGHT_CHARGE * (1 - ratio);
     }

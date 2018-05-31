@@ -12,7 +12,7 @@ public class ReservationPath {
     private ChargerReservation chargerReservation;
 
     public ReservationPath() {
-        this(new ArrayList<>(), Double.NEGATIVE_INFINITY, null);
+        this(new ArrayList<>(), 0.0, null);
     }
 
     public ReservationPath(List<AntUser> path, double merit, ChargerReservation chargerReservation) {
