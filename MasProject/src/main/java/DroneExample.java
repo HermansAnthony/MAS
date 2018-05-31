@@ -23,62 +23,24 @@ import pdp.*;
 import renderer.ChargePanel;
 import renderer.DroneRenderer;
 import renderer.MapRenderer;
-import util.Range;
+import util.PropertiesLoader;
 import util.Utilities;
 
-import javax.imageio.ImageIO;
 import javax.measure.unit.SI;
-import java.awt.image.BufferedImage;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import static util.Utilities.loadResolutionImage;
 
 
 public class DroneExample {
-
-    private static final String map = "/leuven2_800x800.png";
-
     private static final int endTime = 60000;
-
-    // LW = light weight, HW = heavy weight
-    private static final int amountDroneLW = 20;
-    private static final int amountDroneHW = 10;
-//    private static final int amountDroneLW = 0;
-//    private static final int amountDroneHW = 1;
-
-    private static final Range speedDroneLW = new Range(17,22);
-    private static final Range speedDroneHW = new Range(11,22);
-
-    private static int capacityDroneLW = 3500; // Expressed in grams
-    private static int capacityDroneHW = 9000; // Expressed in grams
-
-    private static int batteryDroneLW = 2400;  // Expressed in seconds
-    private static int batteryDroneHW = 1500;  // Expressed in seconds
-
-    private static final int amountChargersLW = 5;
-    private static final int amountChargersHW = 5;
-    private static final double orderProbability = 0.005;
-    private static final int serviceDuration = 60000;
-    private static final int maxCapacity = 9000;
-
-    private static final Point chargingPointLocation = new Point(2500,2500);
 
     private static List<Point> storeLocations;
     private static Point resolutionImage;
     private static final Display display = new Display();
 
-
-    /**
-     * Starts the {@link DroneExample}.
-     *
-     * @param args The first option may optionally indicate the end time of the
-     *             simulation.
-     */
-//    public static void main(@Nullable String[] args) {
-//        run(false, endTime);
-//    }
-
+    private static PropertiesLoader propertiesLoader;
 
     /**
      * Run the example.
@@ -97,15 +59,18 @@ public class DroneExample {
      * @return The simulator instance.
      */
     private static Simulator run(boolean testing, final long endTime) {
-        loadResolutionImage(map);
-        storeLocations = Utilities.loadStoreLocations("/stores.csv");
+        propertiesLoader = PropertiesLoader.getInstance();
+        resolutionImage = loadResolutionImage(propertiesLoader.getMapLocation());
+        storeLocations = Utilities.loadStoreLocations(propertiesLoader.getStoresLocation());
+
+        int maxDimension = propertiesLoader.getMapSize();
 
         final View.Builder view = createGui(testing);
         final Simulator simulator = Simulator.builder()
-            .addModel(TimeModel.builder().withTickLength(250))
+            .addModel(TimeModel.builder().withTickLength(propertiesLoader.getTickLength()))
             .addModel(RoadModelBuilders.plane()
                 .withMinPoint(new Point(0,0))
-                .withMaxPoint(new Point(5000,5000))
+                .withMaxPoint(new Point(maxDimension,maxDimension))
                 .withDistanceUnit(SI.METER)
                 .withSpeedUnit(SI.METERS_PER_SECOND)
                 .withMaxSpeed(50))
@@ -121,28 +86,41 @@ public class DroneExample {
         List<Charger> LWChargers = new ArrayList<>();
         List<Charger> HWChargers = new ArrayList<>();
 
-        for (int i = 0; i < amountChargersLW; i++) {
+        for (int i = 0; i < Integer.valueOf(propertiesLoader.getProperty("Example.amountLWChargers")); i++) {
             LWChargers.add(new Charger());
             simulator.register(LWChargers.get(i));
         }
 
-        for (int i = 0; i < amountChargersHW; i++) {
+        for (int i = 0; i < Integer.valueOf(propertiesLoader.getProperty("Example.amountHWChargers")); i++) {
             HWChargers.add(new Charger());
             simulator.register(HWChargers.get(i));
         }
 
+        Point chargingPointLocation = new Point(maxDimension / 2, maxDimension / 2);
         simulator.register(new ChargingPoint(chargingPointLocation, LWChargers, HWChargers));
 
         for (Point storeLocation : storeLocations) {
             simulator.register(new Store(storeLocation));
         }
-        for (int i = 0; i < amountDroneLW; i++) {
-            simulator.register(new DroneLW(speedDroneLW, capacityDroneLW, batteryDroneLW, chargingPointLocation));
+        for (int i = 0; i < Integer.valueOf(propertiesLoader.getProperty("Example.amountLWDrones")); i++) {
+            simulator.register(new DroneLW(propertiesLoader.getSpeedRangeLW(),
+                propertiesLoader.getCapacityLW(),
+                propertiesLoader.getBatteryLW(),
+                chargingPointLocation));
         }
-        for (int i = 0; i < amountDroneHW; i++) {
-            simulator.register(new DroneHW(speedDroneHW, capacityDroneHW, batteryDroneHW, chargingPointLocation));
+        for (int i = 0; i < Integer.valueOf(propertiesLoader.getProperty("Example.amountHWDrones")); i++) {
+            simulator.register(new DroneHW(propertiesLoader.getSpeedRangeHW(),
+                propertiesLoader.getCapacityHW(),
+                propertiesLoader.getBatteryHW(),
+                chargingPointLocation));
         }
         panel.initializePanel();
+
+        double orderProbability = Double.valueOf(propertiesLoader.getProperty("Example.orderProbability"));
+        int serviceDuration = Integer.valueOf(propertiesLoader.getProperty("Example.serviceDuration"));
+        int minCapacity = Integer.valueOf(propertiesLoader.getProperty("Example.minCapacityOrder"));
+        int maxCapacity = Integer.valueOf(propertiesLoader.getProperty("Example.maxCapacityOrder"));
+
         simulator.addTickListener(new TickListener() {
             @Override
             public void tick(@NotNull TimeLapse time) {
@@ -154,9 +132,9 @@ public class DroneExample {
                     ParcelDTO orderData = Parcel.builder(storeLocations.get(randomStore),location)
                         .serviceDuration(serviceDuration)
                         .orderAnnounceTime(time.getStartTime())
-                        .neededCapacity(1000 + rng.nextInt(maxCapacity - 1000)) // Capacity is measured in grams
+                        .neededCapacity(minCapacity + rng.nextInt(maxCapacity - minCapacity))
                         .deliveryDuration(5)
-                        .pickupTimeWindow(TimeWindow.create(time.getEndTime(), time.getEndTime()+10000))
+                        .pickupTimeWindow(TimeWindow.create(time.getEndTime(), time.getEndTime()+10000)) // TODO uhm
                         .pickupDuration(5)
                         .buildDTO();
                     simulator.register(new Order(orderData, customer));
@@ -188,11 +166,10 @@ public class DroneExample {
                 .withImageAssociation(
                     DroneHW.class, "/droneHW-32.png"))
             .with(DroneRenderer.builder())
-            .with(MapRenderer.builder(map))
+            .with(MapRenderer.builder(propertiesLoader.getMapLocation()))
             .withDisplay(display)
-//            .with(ChargingPointPanel.builder())
             .withResolution(new Double(resolutionImage.x).intValue(), new Double(resolutionImage.y).intValue())
-            .withTitleAppendix("Drone Demo");
+            .withTitleAppendix("Drone Example");
         if (testing) {
             view = view.withAutoClose()
                 .withAutoPlay()
@@ -203,18 +180,5 @@ public class DroneExample {
         return view;
     }
 
-
-    /**
-     * Load the resolutionImage of the given image.
-     * @param filename the image file.
-     */
-    private static void loadResolutionImage(String filename) {
-        try {
-            BufferedImage bufferedImage = ImageIO.read(DroneExample.class.getResource(filename));
-            resolutionImage = new Point(bufferedImage.getWidth(), bufferedImage.getHeight());
-        } catch (IOException e) {
-            resolutionImage = new Point(1120.0,956.0);
-        }
-    }
 
 }

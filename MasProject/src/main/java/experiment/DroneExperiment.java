@@ -25,7 +25,7 @@ import pdp.Order;
 import renderer.ChargingPointPanel;
 import renderer.DroneRenderer;
 import renderer.MapRenderer;
-import util.Range;
+import util.PropertiesLoader;
 import util.Tuple;
 import util.Utilities;
 
@@ -36,45 +36,27 @@ import java.util.Map;
 
 
 public class DroneExperiment {
-    private static final long TICK_LENGTH = 250;
-    // Store related properties
     private static List<Point> storeLocations;
+    private static Point resolutionImage;
 
-    // Map related properties
-    private static Point resolutionImage = new Point(1120.0,956.0);
-
-    // Drone related properties
-    private static final Range speedDroneLW = new Range(17,22);
-    private static final Range speedDroneHW = new Range(11,22);
-
-    private static final int capacityDroneLW = 3500; // Expressed in grams
-    private static final int capacityDroneHW = 9000; // Expressed in grams
-
-    private static final int batteryDroneLW = 2400;  // Expressed in seconds
-    private static final int batteryDroneHW = 1500;  // Expressed in seconds
-
-    //    private static final int amountRequests = 100;
     private static final double orderProbability = 0.005;
     private static final int serviceDuration = 60000;
-    private static final int maxCapacity = 9000;
 
-    private static final Point chargingPointLocation = new Point(2500,2500);
     private static final long simulationLength = 1000000 * 10; // TODO adjust this to amount of ticks, and extend simulation duration (currently 16:40 minutes)
 
-
     private static final int SEED_ORDERS = 0;
-    private static final int MAX_X = 5000;
-    private static final int MAX_Y = 5000;
-    private static final String map = "/leuven2_800x800.png";
-//    private static final String map = "/leuven828.png";
 
     private static Map<Order, Tuple<Long, Long>> ordersInformation;
+
+    private static PropertiesLoader propertiesLoader;
 
     /**
      * Main method
      */
     public static void run(String scenarioIdentifier) {
-        storeLocations = Utilities.loadStoreLocations("/stores.csv");
+        propertiesLoader = PropertiesLoader.getInstance();
+        storeLocations = Utilities.loadStoreLocations(propertiesLoader.getStoresLocation());
+        resolutionImage = Utilities.loadResolutionImage(propertiesLoader.getMapLocation());
         ordersInformation = new HashMap<>();
         Scenario scenario = null;
 
@@ -96,11 +78,11 @@ public class DroneExperiment {
                 // are only used for the solution side should not be added in the
                 // scenario as they are not part of the problem.
                 .addModel(StatsTracker.builder())
-                .addModel(TimeModel.builder().withTickLength(TICK_LENGTH)).build())
+                .addModel(TimeModel.builder().withTickLength(propertiesLoader.getTickLength())).build())
             .addScenario(scenario)
-            .repeat(1)
+            .repeat(Integer.valueOf(propertiesLoader.getProperty("Experiment.amtRepeat")))
             .showGui(false)
-            .withRandomSeed(0)
+            .withRandomSeed(Integer.valueOf(propertiesLoader.getProperty("Experiment.seed")))
             .withThreads(1)
             .usePostProcessor(new ExperimentPostProcessor())
             .showGui(createGui(false, "Scenario: " + scenarioIdentifier))
@@ -129,11 +111,18 @@ public class DroneExperiment {
         // Creation of all objects for the scenario
         RandomGenerator rng = new MersenneTwister();
         rng.setSeed(SEED_ORDERS);
-        for (int i = 0; i < simulationLength; i+=TICK_LENGTH) {
+        int tickLength = propertiesLoader.getTickLength();
+        int mapSize = propertiesLoader.getMapSize();
+        int minCapacity = Integer.valueOf(propertiesLoader.getProperty("Experiment.minCapacityOrder"));
+        int maxCapacity = Integer.valueOf(propertiesLoader.getProperty("Experiment.maxCapacityOrder"));
+        int capacityDroneLW = propertiesLoader.getCapacityLW();
+        int capacityDroneHW = propertiesLoader.getCapacityHW();
+
+        for (int i = 0; i < simulationLength; i += tickLength) {
             if (rng.nextDouble() < orderProbability) {
-                Point location = new Point(rng.nextDouble() * MAX_X, rng.nextDouble() * MAX_Y);
+                Point location = new Point(rng.nextDouble() * mapSize, rng.nextDouble() * mapSize);
                 int randomStore = rng.nextInt(storeLocations.size());
-                int capacity = 1000 + rng.nextInt(maxCapacity - 1000);
+                int capacity = minCapacity + rng.nextInt(maxCapacity - minCapacity);
                 // if a scenario only contains the
                 if (capacity > capacityDroneLW && amountDroneHW == 0)
                     generateDifferentParcels(scenarioBuilder, i, capacity, randomStore, location);
@@ -154,13 +143,20 @@ public class DroneExperiment {
         for (Point location : storeLocations) {
             scenarioBuilder.addEvent(AddDepotEvent.create(-1, location));
         }
+
+        Point chargingPointLocation = new Point(mapSize / 2, mapSize / 2);
+
         for (int i = 0; i < amountDroneLW; i++) {
-            scenarioBuilder.addEvent(AddDroneEvent
-                .create(new DroneLW(speedDroneLW, capacityDroneLW, batteryDroneLW, chargingPointLocation)));
+            scenarioBuilder.addEvent(AddDroneEvent.create(new DroneLW(propertiesLoader.getSpeedRangeLW(),
+                    capacityDroneLW,
+                    propertiesLoader.getBatteryLW(),
+                    chargingPointLocation)));
         }
         for (int i = 0; i < amountDroneHW; i++) {
-            scenarioBuilder.addEvent(AddDroneEvent
-                .create(new DroneHW(speedDroneHW, capacityDroneHW, batteryDroneHW, chargingPointLocation)));
+            scenarioBuilder.addEvent(AddDroneEvent.create(new DroneHW(propertiesLoader.getSpeedRangeHW(),
+                    capacityDroneHW,
+                    propertiesLoader.getBatteryHW(),
+                    chargingPointLocation)));
         }
         scenarioBuilder.addEvent(AddChargingPointEvent.create(chargingPointLocation, amountChargersLW, amountChargersHW));
 
@@ -168,7 +164,7 @@ public class DroneExperiment {
         scenarioBuilder
             .addModel(RoadModelBuilders.plane()
                 .withMinPoint(new Point(0,0))
-                .withMaxPoint(new Point(MAX_X,MAX_Y))
+                .withMaxPoint(new Point(mapSize,mapSize))
                 .withDistanceUnit(SI.METER)
                 .withSpeedUnit(SI.METERS_PER_SECOND)
                 .withMaxSpeed(50))
@@ -186,6 +182,7 @@ public class DroneExperiment {
     }
 
     private static void generateDifferentParcels(Scenario.Builder scenarioBuilder, int time, int capacity, int randomStore, Point location){
+        int capacityDroneLW = propertiesLoader.getCapacityLW();
         int orderWeight1 = capacityDroneLW;
         int orderWeight2 = capacity - orderWeight1;
         int orderWeight3 = 0;
@@ -248,7 +245,7 @@ public class DroneExperiment {
                 .withImageAssociation(
                     DroneHW.class, "/droneHW-32.png"))
             .with(DroneRenderer.builder())
-            .with(MapRenderer.builder(map))
+            .with(MapRenderer.builder(propertiesLoader.getMapLocation()))
             .with(TimeLinePanel.builder())
             .with(StatsPanel.builder())
             .with(ChargingPointPanel.builder())

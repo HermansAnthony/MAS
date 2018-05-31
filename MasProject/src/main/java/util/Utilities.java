@@ -2,6 +2,8 @@ package util;
 
 import com.github.rinde.rinsim.geom.Point;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -9,8 +11,19 @@ import java.util.List;
 import java.util.Scanner;
 
 public class Utilities {
-    // Private constructor which will never be used
-    private Utilities(){}
+    /**
+     * Load the resolutionImage of the given image.
+     * @param filename the image file.
+     */
+    public static Point loadResolutionImage(String filename) {
+        try {
+            BufferedImage bufferedImage = ImageIO.read(Utilities.class.getResource(filename));
+            return new Point(bufferedImage.getWidth(), bufferedImage.getHeight());
+        } catch (IOException e) {
+            return new Point(1120.0,956.0);
+        }
+    }
+
 
     /**
      * Reads the store locations from the specified csv file.
