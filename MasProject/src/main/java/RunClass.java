@@ -46,11 +46,12 @@ public class RunClass {
     }
 
     private static void displayInformation() {
-        System.out.println("Usage of program: java -jar <x.jar> <runMode> <experimentScenario>");
+        System.out.println("Usage of program: java -jar <x.jar> <runMode> <experimentScenario> <configurationFile>");
         System.out.println("\t<x.jar> The jar with dependencies.");
         System.out.println("\t<runMode> Which mode you would like to run (either \"Example\" or \"Experiment\".");
-        System.out.println("\t<experimentScenario> If choosing to run the experiments, the scenario you would like to run (\"Default\", \"LW\", \"HW\").");
-        System.out.println("Default values: <runMode>=\"Default\", <experimentScenario>=\"Default\".\n");
+        System.out.println("\t<experimentScenario> When running the experiments, the scenario you would like to run (\"Default\", \"LW\", \"HW\").");
+        System.out.println("\t<configurationFile> The path to a custom configuration file.");
+        System.out.println("Default values: <runMode>=\"Example\", <experimentScenario>=\"Default\".\n");
     }
 
 }

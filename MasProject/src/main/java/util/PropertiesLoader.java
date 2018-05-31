@@ -13,6 +13,9 @@ public class PropertiesLoader {
         properties = new Properties();
         InputStream inputStream = getClass().getResourceAsStream(propertiesFileLocation);
         if (inputStream == null) {
+            inputStream = getClass().getClassLoader().getResourceAsStream(propertiesFileLocation);
+        }
+        if (inputStream == null) {
             System.err.println("Could not load the properties file, file not found.");
         }
 
