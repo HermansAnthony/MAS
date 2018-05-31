@@ -120,18 +120,22 @@ public final class ExperimentPostProcessor implements PostProcessor<String> {
         return new Tuple<>(Utilities.convertTimeToString(averageDifference),ordersInfo.size());
     }
 
+    /**
+     * Writes the results of the experiment to a file (located in the experiments folder)
+     * @param results the information of the current experiment
+     */
     void writeToFile(String results){
         File directory = new File("experiments");
         if (!directory.exists()){
             directory.mkdir();
         }
-        PrintWriter out = null;
+        PrintWriter file = null;
         try {
-            out = new PrintWriter("experiments/"+this.fileName);
+            file = new PrintWriter("experiments/"+this.fileName);
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         }
-        out.println(results);
-        out.close();
+        file.println(results);
+        file.close();
     }
 }
