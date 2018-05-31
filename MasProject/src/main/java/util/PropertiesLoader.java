@@ -46,8 +46,16 @@ public class PropertiesLoader {
         return Integer.valueOf(properties.getProperty("mapSize"));
     }
 
-    public int getDeliveryInterval() {
-        return Integer.valueOf(properties.getProperty("deliveryInterval"));
+    public int getServiceDuration() {
+        return Integer.valueOf(properties.getProperty("serviceDuration"));
+    }
+
+    public int getLowerBoundDeliveryTime() {
+        return Integer.valueOf(properties.getProperty("lowerBoundDeliveryTime"));
+    }
+
+    public int getDeliveryTimeVariance() {
+        return Integer.valueOf(properties.getProperty("deliveryTimeVariance"));
     }
 
     public Range getSpeedRangeLW() {
@@ -78,5 +86,9 @@ public class PropertiesLoader {
 
     public String getProperty(String property) {
         return properties.getProperty(property);
+    }
+
+    public boolean propertyPresent(String property) {
+        return properties.getProperty(property) != null;
     }
 }

@@ -30,6 +30,7 @@ import javax.measure.unit.SI;
 import java.util.ArrayList;
 import java.util.List;
 
+import static util.Utilities.generateDeliveryEndTime;
 import static util.Utilities.loadResolutionImage;
 
 
@@ -117,9 +118,11 @@ public class DroneExample {
         panel.initializePanel();
 
         double orderProbability = Double.valueOf(propertiesLoader.getProperty("Example.orderProbability"));
-        int serviceDuration = Integer.valueOf(propertiesLoader.getProperty("Example.serviceDuration"));
+        int serviceDuration = propertiesLoader.getServiceDuration();
         int minCapacity = Integer.valueOf(propertiesLoader.getProperty("Example.minCapacityOrder"));
         int maxCapacity = Integer.valueOf(propertiesLoader.getProperty("Example.maxCapacityOrder"));
+        int deliveryTimeVariance = propertiesLoader.getDeliveryTimeVariance();
+        int fixedDeliveryTime = propertiesLoader.getLowerBoundDeliveryTime();
 
         simulator.addTickListener(new TickListener() {
             @Override
@@ -131,11 +134,10 @@ public class DroneExample {
                     int randomStore = rng.nextInt(storeLocations.size());
                     ParcelDTO orderData = Parcel.builder(storeLocations.get(randomStore),location)
                         .serviceDuration(serviceDuration)
-                        .orderAnnounceTime(time.getStartTime())
                         .neededCapacity(minCapacity + rng.nextInt(maxCapacity - minCapacity))
-                        .deliveryDuration(5)
-                        .pickupTimeWindow(TimeWindow.create(time.getEndTime(), time.getEndTime()+10000)) // TODO uhm
-                        .pickupDuration(5)
+                        .orderAnnounceTime(time.getStartTime())
+                        .pickupTimeWindow(TimeWindow.create(time.getStartTime(), Long.MAX_VALUE))
+                        .deliveryTimeWindow(TimeWindow.create(time.getStartTime(), generateDeliveryEndTime(rng, time.getStartTime(), fixedDeliveryTime, deliveryTimeVariance)))
                         .buildDTO();
                     simulator.register(new Order(orderData, customer));
                 }

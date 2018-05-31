@@ -52,4 +52,11 @@ public class TimeMonitor {
         }
     }
 
+    public static void clearFile() {
+        File file = new File(onTime);
+        file.delete();
+        file = new File(overDue);
+        file.delete();
+    }
+
 }

@@ -1,6 +1,7 @@
 package util;
 
 import com.github.rinde.rinsim.geom.Point;
+import org.apache.commons.math3.random.RandomGenerator;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -56,5 +57,10 @@ public class Utilities {
         int minutes = (int) ((time / (1000*60)) % 60);
         int hours   = (int) ((time / (1000*60*60)) % 24);
         return String.format("%02d:%02d:%02d",hours,minutes,seconds);
+    }
+
+    public static long generateDeliveryEndTime(RandomGenerator rng, long startTime, int fixedDeliveryTime, int deliveryInterval){
+        int interval = fixedDeliveryTime + rng.nextInt(deliveryInterval);
+        return startTime + interval;
     }
 }

@@ -1,6 +1,8 @@
 import experiment.DroneExperiment;
 import util.PropertiesLoader;
 
+import java.util.stream.IntStream;
+
 public class RunClass {
     public static void main(String[] args) {
         if (args.length == 0) {
@@ -23,7 +25,23 @@ public class RunClass {
         if (mode.equals("example")) {
             DroneExample.run(false);
         } else if (mode.equals("experiment")) {
-            DroneExperiment.run(scenarioIdentifier);
+            PropertiesLoader loader = PropertiesLoader.getInstance();
+
+            if (loader.propertyPresent("Experiment.seedRangeMin")) {
+                int seedMin = Integer.valueOf(loader.getProperty("Experiment.seedRangeMin"));
+                int seedMax = Integer.valueOf(loader.getProperty("Experiment.seedRangeMax"));
+
+                final String finalScenarioIdentifier = scenarioIdentifier;
+
+                IntStream.range(seedMin, seedMax + 1).forEach(i -> {
+                    String name = "Scenario_" + finalScenarioIdentifier + "_seed" + i;
+                    DroneExperiment.run(finalScenarioIdentifier, name, i);
+                });
+            } else {
+                int seed = Integer.valueOf(loader.getProperty("Experiment.seed"));
+                String name = "Scenario_" + scenarioIdentifier + "_seed" + seed;
+                DroneExperiment.run(scenarioIdentifier, name, seed);
+            }
         }
     }
 

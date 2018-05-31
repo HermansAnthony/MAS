@@ -7,6 +7,7 @@ import com.github.rinde.rinsim.experiment.PostProcessor;
 import energy.EnergyModel;
 import pdp.DroneHW;
 import pdp.DroneLW;
+import util.TimeMonitor;
 import util.Tuple;
 import util.Utilities;
 
@@ -83,6 +84,7 @@ public final class ExperimentPostProcessor implements PostProcessor<String> {
 
         // Write the results to a file
         writeToFile(sb.toString());
+        TimeMonitor.clearFile();
 
         return sb.toString();
     }
