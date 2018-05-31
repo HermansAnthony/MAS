@@ -695,7 +695,6 @@ public abstract class Drone extends Vehicle implements EnergyUser, AntUser {
             return;
         }
 
-        // TODO Only do delegate mas every second? Different timing? Maybe remove this?
         // NOTE: the execution of this method is a bit spread out according to the ID of the drone
         if ((timeLapse.getTime() - (250 * (ID%4))) % 1000 == 0) {
             delegateMAS(timeLapse);

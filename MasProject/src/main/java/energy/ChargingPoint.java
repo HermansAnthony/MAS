@@ -150,7 +150,7 @@ public class ChargingPoint implements AntUser, RoadUser, EnergyUser, TickListene
         RoadModel rm = getRoadModel();
         Point primaryLocation;
         if (ant.getPrimaryAgent() instanceof Drone) {
-            primaryLocation = rm.getPosition(ant.getPrimaryAgent());
+            primaryLocation = rm.getPosition((Drone) ant.getPrimaryAgent());
         } else {
             primaryLocation = ((Order) ant.getPrimaryAgent()).getDeliveryLocation();
         }
@@ -210,7 +210,6 @@ public class ChargingPoint implements AntUser, RoadUser, EnergyUser, TickListene
     private ChargerReservation getBestReservation(double remainingBatteryLevel, long resultingTime, Drone drone) {
         ChargerReservation bestReservation = null;
 
-        // TODO 2000 -> 2 sec buffer -> necessary?
         int chargeTime = (int) Math.ceil((drone.battery.getMaxCapacity() - remainingBatteryLevel) * 1000) + 2000;
 
         for (Charger charger : chargers.get(drone.getClass())) {

@@ -9,7 +9,6 @@ import com.github.rinde.rinsim.ui.renderers.ViewRect;
 import com.google.common.base.Optional;
 import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Image;
-import org.eclipse.swt.graphics.ImageData;
 
 public class MapRenderer extends CanvasRenderer.AbstractCanvasRenderer {
 
@@ -23,18 +22,7 @@ public class MapRenderer extends CanvasRenderer.AbstractCanvasRenderer {
 
     @Override
     public void renderStatic(GC gc, ViewPort vp) {
-        // TODO fix me so that resolution is no longer an issue
         Image mapImage = new Image(gc.getDevice(), getClass().getResourceAsStream(map));
-        System.out.println("Screen bounds:" +  gc.getDevice().getBounds().width + "x" +  gc.getDevice().getBounds().height);
-        System.out.println("Image bounds:" +  mapImage.getBounds().width + "x" +  mapImage.getBounds().height);
-        Double srcWidth = (gc.getDevice().getBounds().width*1.0 / mapImage.getBounds().width)*100;
-        Double srcHeight = (gc.getDevice().getBounds().height*1.0 / mapImage.getBounds().height)*100;
-        System.out.println("Scalefactor:" +  srcWidth + "x" +  srcHeight);
-        ImageData imgData = mapImage.getImageData();
-        imgData.scaledTo(srcWidth.intValue(), srcHeight.intValue());
-        Image resolved = new Image(gc.getDevice(), imgData);
-        System.out.println("New resolution:" + resolved.getBounds().width + "x" + resolved.getBounds().height);
-//        gc.drawImage(resolved, 0, 0);
         gc.drawImage(mapImage, 0, 0);
     }
 

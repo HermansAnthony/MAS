@@ -2,7 +2,6 @@ package util;
 
 import java.io.*;
 
-// TODO maybe just delete this class and only use the TimeMonitor class?
 public class DroneMonitor {
     private String fileName;
     private static String outputDirectory = "logging";

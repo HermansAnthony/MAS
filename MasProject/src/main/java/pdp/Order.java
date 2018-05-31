@@ -124,7 +124,6 @@ public class Order extends Parcel implements AntUser, TickListener, EnergyUser {
             // Set the boolean flag to true for this particular ant (marking it as returned)
             followupAntsPresence.replace(ant, true);
         } else {
-            // TODO rewrite this part more clearly
             // The order is the destination for the ant
             ant.setSecondaryAgent(this);
             List<AntUser> travelledPath = ant.addHopTravelledPath(this);
@@ -132,7 +131,12 @@ public class Order extends Parcel implements AntUser, TickListener, EnergyUser {
             int hopCount = ant.getHopCount();
 
             RoadModel rm = getRoadModel();
-            Point primaryLocation = rm.getPosition(ant.getPrimaryAgent());
+            Point primaryLocation = null;
+            if (ant.getPrimaryAgent() instanceof Drone) {
+                primaryLocation = rm.getPosition((Drone) ant.getPrimaryAgent());
+            } else if (ant.getPrimaryAgent() instanceof Order) {
+                primaryLocation = ((Order) ant.getPrimaryAgent()).getDeliveryLocation();
+            }
             double distancePickup = rm.getDistanceOfPath(rm.getShortestPathTo(primaryLocation, getPickupLocation())).doubleValue(SI.METER);
             double distanceDeliver = rm.getDistanceOfPath(rm.getShortestPathTo(getPickupLocation(), getDeliveryLocation())).doubleValue(SI.METER);
             double batteryDecrease = BatteryCalculations.calculateNecessaryBatteryLevel(ant.getDroneSpeedRange(),

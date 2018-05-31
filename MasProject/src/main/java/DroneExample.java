@@ -35,7 +35,6 @@ import static util.Utilities.loadResolutionImage;
 
 
 public class DroneExample {
-    private static final int endTime = 60000;
 
     private static List<Point> storeLocations;
     private static Point resolutionImage;
@@ -44,22 +43,12 @@ public class DroneExample {
     private static PropertiesLoader propertiesLoader;
 
     /**
-     * Run the example.
-     *
-     * @param testing If <code>true</code> enables the test mode.
-     */
-    public static void run(boolean testing) {
-        run(testing, Long.MAX_VALUE);
-    }
-
-    /**
      * Starts the example.
      *
      * @param testing   Indicates whether the method should run in testing mode.
-     * @param endTime   The time at which simulation should stop.
      * @return The simulator instance.
      */
-    private static Simulator run(boolean testing, final long endTime) {
+    public static Simulator run(boolean testing) {
         propertiesLoader = PropertiesLoader.getInstance();
         resolutionImage = loadResolutionImage(propertiesLoader.getMapLocation());
         storeLocations = Utilities.loadStoreLocations(propertiesLoader.getStoresLocation());

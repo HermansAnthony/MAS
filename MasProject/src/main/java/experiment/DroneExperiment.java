@@ -38,7 +38,7 @@ public class DroneExperiment {
 
     private static final double orderProbability = 0.005;
 
-    private static final long simulationLength = 1000000 * 10; // TODO adjust this to amount of ticks, and extend simulation duration (currently 16:40 minutes)
+    private static long simulationLength;
 
     private static PropertiesLoader propertiesLoader;
 
@@ -49,6 +49,7 @@ public class DroneExperiment {
         propertiesLoader = PropertiesLoader.getInstance();
         storeLocations = Utilities.loadStoreLocations(propertiesLoader.getStoresLocation());
         resolutionImage = Utilities.loadResolutionImage(propertiesLoader.getMapLocation());
+        simulationLength = Long.valueOf(propertiesLoader.getProperty("Experiment.simulationDuration"));
         Scenario scenario = null;
 
         if (scenarioIdentifier.equals("default"))
