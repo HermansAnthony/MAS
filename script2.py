@@ -69,6 +69,10 @@ def processFile(file):
             results["OverdueOrdersArray"].append(int(data[0]))
         if index == 7: processOrderPercentage(data)
 
+
+def getConfInterval(mean, deviation):
+    return t.interval(0.95, 99, loc=mean, scale=deviation)
+
 def calculateStandardDeviation(key, data, mean, N):
     dataArray = np.array(data)
     interval = t.interval(0.95, dataArray.shape[0] - 1, loc=mean, scale=scipy.stats.sem(dataArray))
@@ -99,7 +103,48 @@ if __name__ == '__main__':
         # print(fileName)
         file = open(fileName, 'r')
         processFile(file)
+    
     for key in results.keys():
-        if "Array" in key: continue
+        if "Array" in key: 
+                continue
         results[key] /= numberOfFiles
-    outputResults()
+    # outputResults()
+
+    print("Research question 1 (orders on time)")
+    print("\tConfidence: " + str(getConfInterval(80, np.std(np.array(results["OrderPercentageArray"])))) )
+    print("\tActual mean: " + str(results["OrderPercentage"]))
+
+    print("Research question 2 (average delivery times)")
+    print("\tConfidence: " + str(getConfInterval(300, np.std(np.array(results["DeliveryTimeArray"])))) )
+    print("\tActual mean: " + str(results["DeliveryTime"]))
+
+    print("Research question 3 (occupation charging station) - LW")
+    print("\tConfidence: " + str(getConfInterval(95, np.std(np.array(results["lwChargeArray"])))) )
+    print("\tActual mean: " + str(results["lwCharge"]))
+
+    print("Research question 3 (occupation charging station) - HW")
+    print("\tConfidence: " + str(getConfInterval(95, np.std(np.array(results["hwChargeArray"])))) )
+    print("\tActual mean: " + str(results["hwCharge"]))
+
+    print("Research question 4 (average lateness)")
+    print("\tConfidence: " + str(getConfInterval(60, np.std(np.array(results["OverdueTimeArray"])))) )
+    print("\tActual mean: " + str(results["OverdueTime"]))
+
+
+
+
+    # print(results["hwChargeArray"])
+    # print("Research question 5 (average delivery times)")
+    # print("\tConfidence: " + str(getConfInterval(results["DeliveryTime"], np.std(np.array(results["DeliveryTimeArray"])))) )
+    # # print("\tConfidence hw: " + str(getConfInterval(results["DeliveryTime"], np.std(np.array(results["DeliveryTimeArray"])))) )
+    # # print("\tActual mean: " + str(results["DeliveryTime"]))
+
+    # print("Research question 6 (packages too late)")
+    # print("\tConfidence: " + str(getConfInterval(results["OrderPercentage"], np.std(np.array(results["OrderPercentageArray"])))) )
+    # # print("\tActual mean: " + str(results["DeliveryTime"]))
+
+    # print("Research question 7 (stress charging station)")
+    # print("\tConfidence: " + str(getConfInterval(results["lwCharge"], np.std(np.array(results["lwChargeArray"])))) )
+    # print("\tConfidence: " + str(getConfInterval(results["hwCharge"], np.std(np.array(results["hwChargeArray"])))) )
+    # print("\tActual mean: " + str(results["DeliveryTime"]))
+
